@@ -1,0 +1,803 @@
+/* ======================================
+   VARIABLES ET RESET
+   ====================================== */
+:root {
+  --primary: #6366f1;
+  --primary-dark: #4f46e5;
+  --secondary: #10b981;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --bg: #f8fafc;
+  --card-bg: #ffffff;
+  --text: #1e293b;
+  --text-light: #64748b;
+  --border: #e2e8f0;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.1);
+  --radius: 12px;
+  --spacing: 1rem;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ======================================
+   PAGE DE CONNEXION
+   ====================================== */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+}
+
+.login-container {
+  width: 100%;
+  max-width: 400px;
+}
+
+.login-card {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 2rem;
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.login-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.login-header h1 {
+  font-size: 1.75rem;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+}
+
+.login-header p {
+  color: var(--text-light);
+  font-size: 1rem;
+}
+
+.login-footer {
+  margin-top: 1.5rem;
+  text-align: center;
+  color: var(--text-light);
+}
+
+/* ======================================
+   HEADER
+   ====================================== */
+.app-header {
+  background: var(--card-bg);
+  box-shadow: var(--shadow);
+  padding: 1rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.app-header h1 {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.header-user {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+/* ======================================
+   NAVIGATION
+   ====================================== */
+.app-nav {
+  display: flex;
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  position: sticky;
+  top: 60px;
+  z-index: 99;
+}
+
+.nav-btn {
+  flex: 1;
+  padding: 1rem;
+  background: none;
+  border: none;
+  font-size: 0.875rem;
+  color: var(--text-light);
+  cursor: pointer;
+  transition: all 0.2s;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+}
+
+.nav-btn:hover {
+  background: var(--bg);
+}
+
+.nav-btn.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  font-weight: 600;
+}
+
+/* ======================================
+   CONTENU PRINCIPAL
+   ====================================== */
+.app-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.view {
+  display: none;
+}
+
+.view.active {
+  display: block;
+}
+
+.view-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.view-header h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.period-selector {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* ======================================
+   CARTES
+   ====================================== */
+.card {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  box-shadow: var(--shadow);
+  margin-bottom: 1.5rem;
+}
+
+.card h3 {
+  font-size: 1.125rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .charts-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ======================================
+   FORMULAIRES
+   ====================================== */
+.form-group {
+  margin-bottom: 1.25rem;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  color: var(--text);
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+/* Toggle Buttons */
+.toggle-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.toggle-btn {
+  flex: 1;
+  padding: 0.75rem;
+  border: 2px solid var(--border);
+  background: var(--card-bg);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.toggle-btn:hover {
+  border-color: var(--primary);
+}
+
+.toggle-btn.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+/* ======================================
+   BOUTONS
+   ====================================== */
+.btn {
+  padding: 0.625rem 1.25rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.938rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: var(--primary-dark);
+}
+
+.btn-sm {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.btn-block {
+  width: 100%;
+  display: block;
+}
+
+/* ======================================
+   JAUGE D'ÉQUILIBRE
+   ====================================== */
+.balance-container {
+  margin-top: 1rem;
+}
+
+.balance-gauge {
+  height: 40px;
+  background: var(--bg);
+  border-radius: 20px;
+  overflow: hidden;
+  margin-bottom: 1rem;
+  position: relative;
+}
+
+.gauge-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+  border-radius: 20px;
+  transition: width 0.5s ease;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 1rem;
+  color: white;
+  font-weight: 600;
+}
+
+.balance-info {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.balance-user {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.user-label {
+  font-size: 0.875rem;
+  color: var(--text-light);
+}
+
+.user-amount {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.balance-status {
+  padding: 0.75rem;
+  border-radius: 8px;
+  text-align: center;
+  font-weight: 500;
+  margin-top: 1rem;
+}
+
+.balance-status.equilibrium {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.balance-status.david-ahead {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.balance-status.leo-ahead {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.balance-mode {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.toggle-label input[type="checkbox"] {
+  width: 50px;
+  height: 26px;
+  appearance: none;
+  background: var(--border);
+  border-radius: 13px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.toggle-label input[type="checkbox"]::before {
+  content: '';
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  top: 2px;
+  left: 2px;
+  background: white;
+  transition: all 0.3s;
+}
+
+.toggle-label input[type="checkbox"]:checked {
+  background: var(--secondary);
+}
+
+.toggle-label input[type="checkbox"]:checked::before {
+  left: 26px;
+}
+
+.mode-description {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text-light);
+}
+
+/* ======================================
+   INFO SALAIRES
+   ====================================== */
+.salaries-info {
+  background: #fef3c7;
+  border: 1px solid #fbbf24;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.salaries-info.has-salaries {
+  background: #d1fae5;
+  border-color: #10b981;
+}
+
+.info-text {
+  margin: 0;
+  font-size: 0.938rem;
+  color: var(--text);
+}
+
+/* ======================================
+   LISTE DES DÉPENSES
+   ====================================== */
+.expenses-list {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.expense-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.2s;
+}
+
+.expense-item:hover {
+  background: var(--bg);
+}
+
+.expense-item:last-child {
+  border-bottom: none;
+}
+
+.expense-info {
+  flex: 1;
+}
+
+.expense-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.expense-store {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.expense-type {
+  font-size: 0.813rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text-light);
+}
+
+.expense-details {
+  font-size: 0.875rem;
+  color: var(--text-light);
+}
+
+.expense-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.expense-amount {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.expense-buttons {
+  display: flex;
+  gap: 0.5rem;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.expense-item:hover .expense-buttons {
+  opacity: 1;
+}
+
+.expense-edit,
+.expense-delete {
+  padding: 0.5rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.125rem;
+  transition: transform 0.2s;
+}
+
+.expense-edit {
+  color: var(--primary);
+}
+
+.expense-delete {
+  color: var(--danger);
+}
+
+.expense-edit:hover,
+.expense-delete:hover {
+  transform: scale(1.2);
+}
+
+@media (max-width: 640px) {
+  .expense-buttons {
+    opacity: 1;
+  }
+}
+
+.expenses-empty {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-light);
+}
+
+/* ======================================
+   HISTORIQUE SALAIRES
+   ====================================== */
+.salaries-history {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.salary-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.75rem;
+  background: var(--bg);
+  border-radius: 8px;
+}
+
+.salary-month {
+  font-weight: 500;
+}
+
+.salary-amount {
+  font-weight: 600;
+  color: var(--primary);
+}
+
+/* ======================================
+   MESSAGES
+   ====================================== */
+.error-message {
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 0.75rem;
+  border-radius: 8px;
+  margin-top: 1rem;
+  font-size: 0.875rem;
+}
+
+.success-message {
+  background: #d1fae5;
+  color: #065f46;
+  padding: 0.75rem;
+  border-radius: 8px;
+  margin-top: 1rem;
+  font-size: 0.875rem;
+}
+
+/* ======================================
+   RESPONSIVE
+   ====================================== */
+@media (max-width: 640px) {
+  .app-header h1 {
+    font-size: 1rem;
+  }
+  
+  .header-user span {
+    display: none;
+  }
+
+  .nav-btn {
+    font-size: 0.75rem;
+    padding: 0.75rem 0.5rem;
+  }
+
+  .app-content {
+    padding: 0.75rem;
+  }
+
+  .card {
+    padding: 1rem;
+  }
+
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ======================================
+   GRAPHIQUES
+   ====================================== */
+canvas {
+  max-height: 300px;
+}
+
+/* ======================================
+   PARAMÈTRES
+   ====================================== */
+.setting-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.setting-item:last-child {
+  border-bottom: none;
+}
+
+.setting-info {
+  flex: 1;
+}
+
+.setting-info strong {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.setting-info p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-light);
+}
+
+.toggle-switch {
+  display: block;
+  width: 50px;
+  height: 26px;
+  background: var(--border);
+  border-radius: 13px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.toggle-switch::before {
+  content: '';
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  top: 2px;
+  left: 2px;
+  background: white;
+  transition: all 0.3s;
+}
+
+.toggle-label input[type="checkbox"]:checked ~ .toggle-switch {
+  background: var(--primary);
+}
+
+.toggle-label input[type="checkbox"]:checked ~ .toggle-switch::before {
+  left: 26px;
+}
+
+.about-info p {
+  margin: 0.5rem 0;
+  font-size: 0.938rem;
+}
+
+.password-form {
+  margin-top: 1rem;
+}
+
+/* ======================================
+   DARK THEME
+   ====================================== */
+body.dark-theme {
+  --bg: #0f172a;
+  --card-bg: #1e293b;
+  --text: #f1f5f9;
+  --text-light: #94a3b8;
+  --border: #334155;
+}
+
+body.dark-theme .login-page {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+}
+
+body.dark-theme .balance-gauge {
+  background: #334155;
+}
+
+body.dark-theme .expense-item:hover {
+  background: #334155;
+}
+
+body.dark-theme .salary-item {
+  background: #334155;
+}
+
+body.dark-theme .balance-status.equilibrium {
+  background: #064e3b;
+  color: #d1fae5;
+}
+
+body.dark-theme .balance-status.david-ahead {
+  background: #1e3a8a;
+  color: #dbeafe;
+}
+
+body.dark-theme .balance-status.leo-ahead {
+  background: #78350f;
+  color: #fef3c7;
+}
+
+body.dark-theme .salaries-info {
+  background: #78350f;
+  border-color: #f59e0b;
+}
+
+body.dark-theme .salaries-info.has-salaries {
+  background: #064e3b;
+  border-color: #10b981;
+}
+
+body.dark-theme .expense-type {
+  background: #334155;
+}
+
+/* ======================================
+   ANIMATIONS
+   ====================================== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.view.active {
+  animation: fadeIn 0.3s ease;
+}

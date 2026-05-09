@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Générateur d'Icônes PWA</title>
+</head>
+<body>
+    <h2>Générateur d'Icônes PWA - Compta Couple</h2>
+    <p>Cliquez sur les boutons ci-dessous pour télécharger les icônes :</p>
+    <button onclick="generateIcon(192)">Télécharger icon-192.png</button>
+    <button onclick="generateIcon(512)">Télécharger icon-512.png</button>
+    
+    <p style="margin-top: 20px;">
+        <strong>Instructions :</strong><br>
+        1. Cliquez sur chaque bouton pour télécharger les icônes<br>
+        2. Placez les fichiers téléchargés dans le dossier <code>public/</code><br>
+        3. Démarrez l'application avec <code>npm start</code>
+    </p>
+
+    <script>
+        function generateIcon(size) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            
+            // Fond dégradé
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#6366f1');
+            gradient.addColorStop(1, '#4f46e5');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, size, size);
+            
+            // Emoji
+            ctx.font = `${size * 0.6}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('💰', size / 2, size / 2);
+            
+            // Télécharger
+            canvas.toBlob(function(blob) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `icon-${size}.png`;
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+        }
+    </script>
+</body>
+</html>

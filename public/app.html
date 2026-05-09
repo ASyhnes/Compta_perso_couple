@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#6366f1">
+  <meta name="description" content="Application de gestion de budget pour couple">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Compta Couple - Tableau de Bord</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/png" href="/icon-192.png">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-content">
+      <h1>💰 Compta Couple</h1>
+      <div class="header-user">
+        <span id="currentUser"></span>
+        <button id="logoutBtn" class="btn btn-sm">Déconnexion</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navigation -->
+  <nav class="app-nav">
+    <button class="nav-btn active" data-view="dashboard">
+      📊 Tableau de Bord
+    </button>
+    <button class="nav-btn" data-view="add-expense">
+      ➕ Nouvelle Dépense
+    </button>
+    <button class="nav-btn" data-view="salaries">
+      💵 Salaires
+    </button>
+    <button class="nav-btn" data-view="settings">
+      ⚙️ Paramètres
+    </button>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="app-content">
+    <!-- Vue Tableau de Bord -->
+    <section id="dashboard-view" class="view active">
+      <div class="view-header">
+        <h2>Tableau de Bord</h2>
+        <div class="period-selector">
+          <button id="periodMonth" class="btn btn-sm active">Mois en cours</button>
+          <button id="periodTotal" class="btn btn-sm">Total</button>
+        </div>
+      </div>
+
+      <!-- Indicateurs de salaires -->
+      <div class="salaries-info" id="salariesInfo">
+        <p class="info-text">⚠️ Configurez les salaires du mois pour voir les ratios</p>
+      </div>
+
+      <!-- Jauge d'équilibre -->
+      <div class="card">
+        <h3>⚖️ Équilibre des Dépenses</h3>
+        <div class="balance-container">
+          <div class="balance-gauge" id="balanceGauge">
+            <div class="gauge-bar" id="gaugeBar"></div>
+          </div>
+          <div class="balance-info" id="balanceInfo">
+            <div class="balance-user">
+              <span class="user-label">David</span>
+              <span class="user-amount" id="davidAmount">0 €</span>
+            </div>
+            <div class="balance-user">
+              <span class="user-label">Léo</span>
+              <span class="user-amount" id="leoAmount">0 €</span>
+            </div>
+          </div>
+          <div class="balance-status" id="balanceStatus"></div>
+        </div>
+        
+        <!-- Toggle Équité/Égalité -->
+        <div class="balance-mode">
+          <label class="toggle-label">
+            <input type="checkbox" id="balanceModeToggle">
+            <span>Mode Égalité (règle 2/3)</span>
+          </label>
+          <p class="mode-description" id="modeDescription">
+            Mode Équitabilité : Ratio au prorata du salaire
+          </p>
+        </div>
+      </div>
+
+      <!-- Graphiques -->
+      <div class="charts-grid">
+        <div class="card">
+          <h3>📊 Répartition par Type</h3>
+          <canvas id="typeChart"></canvas>
+        </div>
+
+        <div class="card">
+          <h3>👥 Dépenses par Personne</h3>
+          <canvas id="userChart"></canvas>
+        </div>
+
+        <div class="card">
+          <h3>💰 Couple vs Perso</h3>
+          <canvas id="beneficiaryChart"></canvas>
+        </div>
+
+        <div class="card">
+          <h3>📈 Salaire vs Dépenses</h3>
+          <canvas id="salaryVsExpensesChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Liste des dépenses récentes -->
+      <div class="card">
+        <h3>📝 Dépenses Récentes</h3>
+        <div id="expensesList" class="expenses-list"></div>
+      </div>
+    </section>
+
+    <!-- Vue Nouvelle Dépense -->
+    <section id="add-expense-view" class="view">
+      <div class="view-header">
+        <h2>Nouvelle Dépense</h2>
+      </div>
+
+      <form id="expenseForm" class="expense-form card">
+        <div class="form-group">
+          <label for="amount">💵 Montant (€)</label>
+          <input type="number" id="amount" name="amount" step="0.01" required placeholder="0.00">
+        </div>
+
+        <div class="form-group">
+          <label for="date">📅 Date</label>
+          <input type="date" id="date" name="date" required>
+        </div>
+
+        <div class="form-group">
+          <label for="store">🏪 Magasin</label>
+          <input type="text" id="store" name="store" required placeholder="Nom du magasin">
+        </div>
+
+        <div class="form-group">
+          <label for="type">🏷️ Type</label>
+          <select id="type" name="type" required>
+            <option value="">Choisir...</option>
+            <option value="Nourriture">🍔 Nourriture</option>
+            <option value="Maison">🏠 Maison</option>
+            <option value="Bricolage">🔧 Bricolage</option>
+            <option value="Plaisir">🎉 Plaisir</option>
+            <option value="Botanique">🌱 Botanique</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="beneficiary">👥 Bénéficiaire</label>
+          <div class="toggle-buttons">
+            <button type="button" class="toggle-btn active" data-value="Couple">Couple</button>
+            <button type="button" class="toggle-btn" data-value="Perso">Perso</button>
+          </div>
+          <input type="hidden" id="beneficiary" name="beneficiary" value="Couple">
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block">
+          ✅ Enregistrer la dépense
+        </button>
+
+        <div id="expenseError" class="error-message" style="display: none;"></div>
+        <div id="expenseSuccess" class="success-message" style="display: none;"></div>
+      </form>
+    </section>
+
+    <!-- Vue Salaires -->
+    <section id="salaries-view" class="view">
+      <div class="view-header">
+        <h2>Configuration des Salaires</h2>
+      </div>
+
+      <div class="card">
+        <p class="info-text">💡 Saisissez les salaires du mois en cours pour calculer les ratios d'équité et d'égalité.</p>
+        
+        <form id="salaryForm" class="salary-form">
+          <div class="form-group">
+            <label for="salaryMonth">📅 Mois</label>
+            <input type="month" id="salaryMonth" name="salaryMonth" required>
+          </div>
+
+          <div class="form-group">
+            <label for="salaryAmount">💵 Votre salaire (€)</label>
+            <input type="number" id="salaryAmount" name="salaryAmount" step="0.01" required placeholder="0.00">
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block">
+            💾 Enregistrer
+          </button>
+
+          <div id="salaryError" class="error-message" style="display: none;"></div>
+          <div id="salarySuccess" class="success-message" style="display: none;"></div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h3>📊 Salaires Enregistrés</h3>
+        <div id="salariesHistory" class="salaries-history"></div>
+      </div>
+    </section>
+
+    <!-- Vue Paramètres -->
+    <section id="settings-view" class="view">
+      <div class="view-header">
+        <h2>Paramètres</h2>
+      </div>
+
+      <!-- Thème -->
+      <div class="card">
+        <h3>🎨 Apparence</h3>
+        <div class="setting-item">
+          <div class="setting-info">
+            <strong>Thème sombre</strong>
+            <p>Activer le mode sombre pour réduire la fatigue oculaire</p>
+          </div>
+          <label class="toggle-label">
+            <input type="checkbox" id="darkThemeToggle">
+            <span class="toggle-switch"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Changement de mot de passe -->
+      <div class="card">
+        <h3>🔒 Sécurité</h3>
+        <form id="passwordForm" class="password-form">
+          <div class="form-group">
+            <label for="currentPassword">Mot de passe actuel</label>
+            <input type="password" id="currentPassword" name="currentPassword" required placeholder="Entrez votre mot de passe actuel">
+          </div>
+
+          <div class="form-group">
+            <label for="newPassword">Nouveau mot de passe</label>
+            <input type="password" id="newPassword" name="newPassword" required placeholder="Nouveau mot de passe" minlength="4">
+          </div>
+
+          <div class="form-group">
+            <label for="confirmPassword">Confirmer le nouveau mot de passe</label>
+            <input type="password" id="confirmPassword" name="confirmPassword" required placeholder="Confirmez le mot de passe" minlength="4">
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block">
+            💾 Changer le mot de passe
+          </button>
+
+          <div id="passwordError" class="error-message" style="display: none;"></div>
+          <div id="passwordSuccess" class="success-message" style="display: none;"></div>
+        </form>
+      </div>
+
+      <!-- Informations -->
+      <div class="card">
+        <h3>ℹ️ À propos</h3>
+        <div class="about-info">
+          <p><strong>Application:</strong> Compta Couple</p>
+          <p><strong>Version:</strong> 1.0.0</p>
+          <p><strong>Base de données:</strong> JSON</p>
+          <p><strong>Utilisateur connecté:</strong> <span id="settingsUsername"></span></p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>

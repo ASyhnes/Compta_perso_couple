@@ -1,0 +1,49 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "username": "david",
+      "password": "$2a$10$lAD6GEEPDpslctuW1XBG9.eKbAO/6nv7TU1qroaMHxU6iyiG.cAE.",
+      "display_name": "David",
+      "created_at": "2026-05-09T22:13:28.345Z"
+    },
+    {
+      "id": 2,
+      "username": "leo",
+      "password": "$2a$10$YvTcE4goAxcF9X5srwE9KeTAX3uTgjbCZT8ssl0zcNiprydeB0LSy",
+      "display_name": "Léo",
+      "created_at": "2026-05-09T22:13:28.345Z"
+    }
+  ],
+  "salaries": [
+    {
+      "id": 1,
+      "user_id": 1,
+      "month": "2026-05",
+      "amount": 2300,
+      "created_at": "2026-05-09T22:16:30.968Z"
+    }
+  ],
+  "expenses": [
+    {
+      "id": 1,
+      "user_id": 1,
+      "amount": 500,
+      "date": "2026-05-09",
+      "store": "leclerc",
+      "type": "Nourriture",
+      "beneficiary": "Couple",
+      "created_at": "2026-05-09T22:17:20.257Z"
+    },
+    {
+      "id": 2,
+      "user_id": 1,
+      "amount": 5,
+      "date": "2026-05-09",
+      "store": "cafeshoop",
+      "type": "Nourriture",
+      "beneficiary": "Perso",
+      "created_at": "2026-05-09T22:17:53.009Z"
+    }
+  ]
+}
