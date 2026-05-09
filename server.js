@@ -10,6 +10,9 @@ const { initDatabase } = require('./database/json-db');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// When running behind a reverse proxy (nginx) and using secure cookies,
+// enable trust proxy so Express sees the original protocol (HTTPS).
+app.set('trust proxy', 1);
 // Initialisation de la base de données
 const db = initDatabase(process.env.DATABASE_PATH || './database/compta.db');
 
@@ -23,8 +26,10 @@ app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
+  proxy: true,
   cookie: { 
-    secure: process.env.NODE_ENV === 'production',
+    secure: 'auto',
+    sameSite: 'lax',
     maxAge: 30 * 24 * 60 * 60 * 1000 // 30 jours
   }
 }));
@@ -58,17 +63,31 @@ app.post('/api/login', (req, res) => {
       return res.status(401).json({ error: 'Identifiants incorrects' });
     }
 
-    req.session.userId = user.id;
-    req.session.username = user.username;
-    req.session.displayName = user.display_name;
+    req.session.regenerate((regenError) => {
+      if (regenError) {
+        console.error('Erreur regeneration session:', regenError);
+        return res.status(500).json({ error: 'Erreur serveur' });
+      }
 
-    res.json({ 
-      success: true, 
-      user: { 
-        id: user.id, 
-        username: user.username, 
-        displayName: user.display_name 
-      } 
+      req.session.userId = user.id;
+      req.session.username = user.username;
+      req.session.displayName = user.display_name;
+
+      req.session.save((saveError) => {
+        if (saveError) {
+          console.error('Erreur sauvegarde session:', saveError);
+          return res.status(500).json({ error: 'Erreur serveur' });
+        }
+
+        res.json({ 
+          success: true, 
+          user: { 
+            id: user.id, 
+            username: user.username, 
+            displayName: user.display_name 
+          } 
+        });
+      });
     });
   } catch (error) {
     console.error('Erreur login:', error);

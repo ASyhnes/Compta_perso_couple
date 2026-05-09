@@ -52,7 +52,7 @@
 
   <script>
     // Vérifier si déjà connecté
-    fetch('/api/session')
+    fetch('/api/session', { credentials: 'same-origin' })
       .then(res => res.json())
       .then(data => {
         if (data.authenticated) {
@@ -71,6 +71,7 @@
       try {
         const response = await fetch('/api/login', {
           method: 'POST',
+          credentials: 'same-origin',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, password })
         });
@@ -78,7 +79,10 @@
         const data = await response.json();
 
         if (data.success) {
-          window.location.href = '/app.html';
+          // Laisser un court délai pour que le cookie de session soit écrit avant la redirection.
+          setTimeout(() => {
+            window.location.href = '/app.html';
+          }, 150);
         } else {
           errorDiv.textContent = data.error || 'Erreur de connexion';
           errorDiv.style.display = 'block';

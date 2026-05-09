@@ -51,13 +51,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ========================================
 
 async function checkSession() {
-  const response = await fetch('/api/session');
+  const response = await fetch('/api/session', { credentials: 'same-origin' });
   return await response.json();
 }
 
 function initLogout() {
   document.getElementById('logoutBtn').addEventListener('click', async () => {
-    await fetch('/api/logout', { method: 'POST' });
+    await fetch('/api/logout', { method: 'POST', credentials: 'same-origin' });
     window.location.href = '/index.html';
   });
 }
@@ -151,9 +151,9 @@ async function loadDashboard() {
 
     // Charger les statistiques
     const [stats, expenses, salaries] = await Promise.all([
-      fetch(`/api/stats?${params}`).then(r => r.json()),
-      fetch(`/api/expenses?${params}`).then(r => r.json()),
-      fetch(`/api/salaries/${getCurrentMonth()}`).then(r => r.json())
+      fetch(`/api/stats?${params}`, { credentials: 'same-origin' }).then(r => r.json()),
+      fetch(`/api/expenses?${params}`, { credentials: 'same-origin' }).then(r => r.json()),
+      fetch(`/api/salaries/${getCurrentMonth()}`, { credentials: 'same-origin' }).then(r => r.json())
     ]);
 
     // Mettre à jour l'affichage
