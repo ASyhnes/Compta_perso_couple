@@ -33,6 +33,12 @@
     <button class="nav-btn" data-view="add-expense">
       ➕ Nouvelle Dépense
     </button>
+    <button class="nav-btn" data-view="virements">
+      💳 Virements Compte Commun
+    </button>
+    <button class="nav-btn" data-view="charges-hors-compte">
+      💸 Charges Hors Compte
+    </button>
     <button class="nav-btn" data-view="salaries">
       💵 Salaires
     </button>
@@ -163,6 +169,14 @@
           <input type="hidden" id="beneficiary" name="beneficiary" value="Couple">
         </div>
 
+        <div class="form-group">
+          <label for="account">🏦 Compte</label>
+          <select id="account" name="account" required>
+            <option value="commun">Compte Commun</option>
+            <option value="personnel">Compte Personnel</option>
+          </select>
+        </div>
+
         <button type="submit" class="btn btn-primary btn-block">
           ✅ Enregistrer la dépense
         </button>
@@ -170,6 +184,91 @@
         <div id="expenseError" class="error-message" style="display: none;"></div>
         <div id="expenseSuccess" class="success-message" style="display: none;"></div>
       </form>
+    </section>
+
+    <!-- Vue Virements Compte Commun -->
+    <section id="virements-view" class="view">
+      <div class="view-header">
+        <h2>💳 Virements Compte Commun</h2>
+      </div>
+
+      <div class="card">
+        <p class="info-text">💡 Enregistrez les montants que vous versez sur le compte commun.</p>
+        
+        <form id="virementForm" class="virement-form">
+          <div class="form-group">
+            <label for="virementAmount">💵 Montant (€)</label>
+            <input type="number" id="virementAmount" name="virementAmount" step="0.01" required placeholder="0.00">
+          </div>
+
+          <div class="form-group">
+            <label for="virementDate">📅 Date</label>
+            <input type="date" id="virementDate" name="virementDate" required>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block">
+            💾 Enregistrer le virement
+          </button>
+
+          <div id="virementError" class="error-message" style="display: none;"></div>
+          <div id="virementSuccess" class="success-message" style="display: none;"></div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h3>📊 Virements Enregistrés</h3>
+        <div id="virementsList" class="virements-list"></div>
+      </div>
+    </section>
+
+    <!-- Vue Charges Hors Compte -->
+    <section id="charges-hors-compte-view" class="view">
+      <div class="view-header">
+        <h2>💸 Charges Hors Compte</h2>
+      </div>
+
+      <div class="card">
+        <p class="info-text">💡 Enregistrez les dépenses personnelles pour le couple (loyer, garage, autres frais).</p>
+        
+        <form id="chargeForm" class="charge-form">
+          <div class="form-group">
+            <label for="chargeAmount">💵 Montant (€)</label>
+            <input type="number" id="chargeAmount" name="chargeAmount" step="0.01" required placeholder="0.00">
+          </div>
+
+          <div class="form-group">
+            <label for="chargeDate">📅 Date</label>
+            <input type="date" id="chargeDate" name="chargeDate" required>
+          </div>
+
+          <div class="form-group">
+            <label for="chargeCategory">🏷️ Catégorie</label>
+            <select id="chargeCategory" name="chargeCategory" required>
+              <option value="">Choisir...</option>
+              <option value="loyer">🏠 Loyer</option>
+              <option value="loyer_garage">🚗 Loyer Garage</option>
+              <option value="autre">📌 Autre (précisez)</option>
+            </select>
+          </div>
+
+          <div class="form-group" id="chargeDescriptionGroup" style="display: none;">
+            <label for="chargeDescription">Description</label>
+            <input type="text" id="chargeDescription" name="chargeDescription" placeholder="Précisez la nature de la charge">
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block">
+            💾 Enregistrer la charge
+          </button>
+
+          <div id="chargeError" class="error-message" style="display: none;"></div>
+          <div id="chargeSuccess" class="success-message" style="display: none;"></div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h3>📊 Charges Enregistrées</h3>
+        <div id="chargesList" class="charges-list"></div>
+      </div>
     </section>
 
     <!-- Vue Salaires -->
@@ -257,6 +356,27 @@
       </div>
 
       <!-- Informations -->
+      <!-- Gestion des utilisateurs -->
+      <div class="card">
+        <h3>👥 Gestion des Utilisateurs</h3>
+        <div id="usersList" class="users-list"></div>
+
+        <form id="addUserForm" class="add-user-form" style="margin-top:12px;">
+          <div class="form-group">
+            <label for="newUsername">Nom d'utilisateur</label>
+            <input type="text" id="newUsername" required placeholder="ex: claire">
+          </div>
+          <div class="form-group">
+            <label for="newDisplayName">Nom affiché</label>
+            <input type="text" id="newDisplayName" placeholder="Claire">
+          </div>
+          <div class="form-group">
+            <label for="newPassword">Mot de passe</label>
+            <input type="password" id="newPassword" placeholder="laisser vide = username">
+          </div>
+          <button type="submit" class="btn btn-primary">➕ Ajouter utilisateur</button>
+        </form>
+      </div>
       <div class="card">
         <h3>ℹ️ À propos</h3>
         <div class="about-info">

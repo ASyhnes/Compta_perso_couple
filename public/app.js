@@ -8,6 +8,7 @@ let currentUser = null;
 let currentPeriod = 'month'; // 'month' ou 'total'
 let balanceMode = 'equity'; // 'equity' ou 'equality'
 let charts = {};
+let latestStats = null;
 
 // ========================================
 // INITIALISATION
@@ -27,6 +28,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Initialiser l'interface
   initNavigation();
   initExpenseForm();
+  initVirementForm();
+  initChargeForm();
   initSalaryForm();
   initPeriodSelector();
   initBalanceModeToggle();
@@ -40,10 +43,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   document.getElementById('salaryMonth').value = currentMonth;
+  document.getElementById('virementDate').value = now.toISOString().split('T')[0];
+  document.getElementById('chargeDate').value = now.toISOString().split('T')[0];
   
   // Définir la date du jour par défaut dans le formulaire de dépense
   const today = now.toISOString().split('T')[0];
   document.getElementById('date').value = today;
+
+  // Version check pour rechargement auto
+  await checkVersionAndReload();
+  setInterval(checkVersionAndReload, 30000);
 });
 
 // ========================================
@@ -86,6 +95,10 @@ function initNavigation() {
         loadDashboard();
       } else if (viewName === 'salaries') {
         loadSalariesHistory();
+      } else if (viewName === 'virements') {
+        loadVirements();
+      } else if (viewName === 'charges-hors-compte') {
+        loadCharges();
       } else if (viewName === 'settings') {
         document.getElementById('settingsUsername').textContent = currentUser.displayName;
       }
@@ -157,6 +170,7 @@ async function loadDashboard() {
     ]);
 
     // Mettre à jour l'affichage
+    latestStats = stats;
     updateSalariesInfo(salaries);
     updateCharts(stats);
     updateExpensesList(expenses);
@@ -232,18 +246,20 @@ function updateBalanceDisplay(stats, salaries) {
 }
 
 function calculateEquityBalance(salaries, davidTotal, leoTotal, statusDiv) {
-  const davidSalary = salaries?.find(s => s.username === 'david')?.amount || 0;
-  const leoSalary = salaries?.find(s => s.username === 'leo')?.amount || 0;
+  // Utiliser contributions (virements + loyer) si disponibles via latestStats
+  const contributions = latestStats?.contributionsByUser || salaries;
+  const davidContrib = contributions?.find(s => s.username === 'david')?.contributions || contributions?.find(s => s.username === 'david')?.amount || 0;
+  const leoContrib = contributions?.find(s => s.username === 'leo')?.contributions || contributions?.find(s => s.username === 'leo')?.amount || 0;
 
-  if (davidSalary === 0 || leoSalary === 0) {
-    statusDiv.textContent = '⚠️ Configurez les salaires pour calculer l\'équitabilité';
+  if (davidContrib === 0 || leoContrib === 0) {
+    statusDiv.textContent = '⚠️ Configurez les salaires ou contributions pour calculer l\'équitabilité';
     statusDiv.className = 'balance-status';
     return;
   }
 
-  const totalSalary = davidSalary + leoSalary;
-  const davidExpectedRatio = davidSalary / totalSalary;
-  const leoExpectedRatio = leoSalary / totalSalary;
+  const totalContrib = davidContrib + leoContrib;
+  const davidExpectedRatio = davidContrib / totalContrib;
+  const leoExpectedRatio = leoContrib / totalContrib;
 
   const totalExpenses = davidTotal + leoTotal;
   const davidActualRatio = totalExpenses > 0 ? davidTotal / totalExpenses : 0;
@@ -254,13 +270,13 @@ function calculateEquityBalance(salaries, davidTotal, leoTotal, statusDiv) {
 
   // Marge d'équilibre de 5%
   if (Math.abs(davidDiff) < 5) {
-    statusDiv.textContent = `✅ Équilibre atteint ! Ratios respectés au prorata des salaires`;
+    statusDiv.textContent = `✅ Équilibre atteint ! Ratios respectés au prorata des contributions`;
     statusDiv.className = 'balance-status equilibrium';
   } else if (davidDiff > 0) {
-    statusDiv.textContent = `📊 David dépense ${Math.abs(davidDiff)}% de plus que son ratio de salaire`;
+    statusDiv.textContent = `📊 David dépense ${Math.abs(davidDiff)}% de plus que son ratio attendu`;
     statusDiv.className = 'balance-status david-ahead';
   } else {
-    statusDiv.textContent = `📊 Léo dépense ${Math.abs(leoDiff)}% de plus que son ratio de salaire`;
+    statusDiv.textContent = `📊 Léo dépense ${Math.abs(leoDiff)}% de plus que son ratio attendu`;
     statusDiv.className = 'balance-status leo-ahead';
   }
 }
@@ -298,7 +314,12 @@ function calculateEqualityBalance(davidTotal, leoTotal, statusDiv) {
 function updateCharts(stats) {
   updateTypeChart(stats.totalByType);
   updateUserChart(stats.totalByUser);
-  updateBeneficiaryChart(stats.totalByBeneficiary);
+  // Afficher les dépenses perso par utilisateur si disponibles
+  if (stats.personalByUser) {
+    updateBeneficiaryChart(stats.personalByUser);
+  } else {
+    updateBeneficiaryChart(stats.totalByBeneficiary);
+  }
   updateSalaryVsExpensesChart(stats);
 }
 
@@ -410,8 +431,17 @@ function updateBeneficiaryChart(data) {
     charts.beneficiaryChart.destroy();
   }
 
-  const labels = data.map(d => d.beneficiary === 'Couple' ? '👫 Couple' : '🙋 Perso');
-  const values = data.map(d => d.total || 0);
+  let labels = [];
+  let values = [];
+
+  if (data.length > 0 && data[0].personal !== undefined) {
+    // personalByUser format
+    labels = data.map(d => d.display_name || d.username);
+    values = data.map(d => d.personal || 0);
+  } else if (data.length > 0 && data[0].beneficiary !== undefined) {
+    labels = data.map(d => d.beneficiary === 'Couple' ? '👫 Couple' : '🙋 Perso');
+    values = data.map(d => d.total || 0);
+  }
 
   charts.beneficiaryChart = new Chart(ctx, {
     type: 'doughnut',
@@ -451,17 +481,11 @@ async function updateSalaryVsExpensesChart(stats) {
   }
 
   // Récupérer les salaires du mois actuel
-  const salaries = await fetch(`/api/salaries/${getCurrentMonth()}`).then(r => r.json());
+  const salaries = await fetch(`/api/salaries/${getCurrentMonth()}`, { credentials: 'same-origin' }).then(r => r.json());
   
-  const users = ['David', 'Léo'];
-  const salaryData = [
-    salaries.find(s => s.username === 'david')?.amount || 0,
-    salaries.find(s => s.username === 'leo')?.amount || 0
-  ];
-  const expenseData = [
-    stats.totalByUser.find(u => u.username === 'david')?.total || 0,
-    stats.totalByUser.find(u => u.username === 'leo')?.total || 0
-  ];
+  const users = stats.totalByUser.map(u => u.display_name || u.username);
+  const salaryData = stats.totalByUser.map(u => (salaries.find(s => s.username === u.username)?.amount) || 0);
+  const expenseData = stats.totalByUser.map(u => u.total || 0);
 
   charts.salaryVsExpensesChart = new Chart(ctx, {
     type: 'bar',
@@ -544,7 +568,7 @@ function updateExpensesList(expenses) {
 async function editExpense(id) {
   try {
     // Récupérer la dépense
-    const response = await fetch(`/api/expenses/${id}`);
+    const response = await fetch(`/api/expenses/${id}`, { credentials: 'same-origin' });
     const expense = await response.json();
 
     if (!expense) {
@@ -590,7 +614,8 @@ async function deleteExpense(id) {
 
   try {
     const response = await fetch(`/api/expenses/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      credentials: 'same-origin'
     });
 
     if (response.ok) {
@@ -630,7 +655,8 @@ function initExpenseForm() {
       date: document.getElementById('date').value,
       store: document.getElementById('store').value,
       type: document.getElementById('type').value,
-      beneficiary: document.getElementById('beneficiary').value
+      beneficiary: document.getElementById('beneficiary').value,
+      account: document.getElementById('account').value
     };
 
     const submitBtn = e.target.querySelector('button[type="submit"]');
@@ -643,6 +669,7 @@ function initExpenseForm() {
         response = await fetch(`/api/expenses/${editId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
           body: JSON.stringify(formData)
         });
       } else {
@@ -650,6 +677,7 @@ function initExpenseForm() {
         response = await fetch('/api/expenses', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
           body: JSON.stringify(formData)
         });
       }
@@ -683,6 +711,230 @@ function initExpenseForm() {
       showMessage('expenseError', 'Erreur de connexion au serveur');
     }
   });
+}
+
+// ========================================
+// VIREMENTS COMPTE COMMUN
+// ========================================
+
+function initVirementForm() {
+  // Soumission du formulaire
+  document.getElementById('virementForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const formData = {
+      amount: parseFloat(document.getElementById('virementAmount').value),
+      date: document.getElementById('virementDate').value
+    };
+
+    try {
+      const response = await fetch('/api/virement', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify(formData)
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        showMessage('virementSuccess', '✅ Virement enregistré avec succès !');
+        document.getElementById('virementForm').reset();
+        
+        // Réinitialiser la date à aujourd'hui
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('virementDate').value = today;
+
+        // Recharger le dashboard et la liste
+        await loadDashboard();
+        await loadVirements();
+      } else {
+        showMessage('virementError', data.error || 'Erreur lors de l\'enregistrement');
+      }
+    } catch (error) {
+      console.error('Erreur enregistrement virement:', error);
+      showMessage('virementError', 'Erreur de connexion au serveur');
+    }
+  });
+}
+
+async function loadVirements() {
+  try {
+    const params = new URLSearchParams();
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    params.append('month', currentMonth);
+
+    const response = await fetch(`/api/virements?${params}`, { credentials: 'same-origin' });
+    const virements = await response.json();
+
+    const virementsList = document.getElementById('virementsList');
+    virementsList.innerHTML = '';
+
+    if (virements.length === 0) {
+      virementsList.innerHTML = '<p style="text-align: center; color: #666;">Aucun virement enregistré ce mois-ci</p>';
+      return;
+    }
+
+    virements.forEach(v => {
+      const row = document.createElement('div');
+      row.className = 'transaction-row';
+      row.innerHTML = `
+        <div class="transaction-info">
+          <div class="transaction-user">${v.display_name}</div>
+          <div class="transaction-date">${new Date(v.date).toLocaleDateString('fr-FR')}</div>
+        </div>
+        <div class="transaction-amount">${formatMoney(v.amount)}</div>
+        <button class="btn-delete" onclick="deleteVirement(${v.id})">🗑️</button>
+      `;
+      virementsList.appendChild(row);
+    });
+  } catch (error) {
+    console.error('Erreur chargement virements:', error);
+  }
+}
+
+async function deleteVirement(id) {
+  if (!confirm('Êtes-vous sûr de vouloir supprimer ce virement ?')) return;
+
+  try {
+    const response = await fetch(`/api/virement/${id}`, {
+      method: 'DELETE',
+      credentials: 'same-origin'
+    });
+
+    const data = await response.json();
+    if (data.success) {
+      await loadDashboard();
+      await loadVirements();
+    }
+  } catch (error) {
+    console.error('Erreur suppression virement:', error);
+  }
+}
+
+// ========================================
+// CHARGES HORS COMPTE
+// ========================================
+
+function initChargeForm() {
+  // Afficher/masquer le champ description selon la catégorie
+  document.getElementById('chargeCategory').addEventListener('change', (e) => {
+    const descriptionGroup = document.getElementById('chargeDescriptionGroup');
+    if (e.target.value === 'autre') {
+      descriptionGroup.style.display = 'block';
+      document.getElementById('chargeDescription').required = true;
+    } else {
+      descriptionGroup.style.display = 'none';
+      document.getElementById('chargeDescription').required = false;
+    }
+  });
+
+  // Soumission du formulaire
+  document.getElementById('chargeForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const formData = {
+      amount: parseFloat(document.getElementById('chargeAmount').value),
+      date: document.getElementById('chargeDate').value,
+      category: document.getElementById('chargeCategory').value,
+      description: document.getElementById('chargeDescription').value || null
+    };
+
+    try {
+      const response = await fetch('/api/charge-hors-compte', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify(formData)
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        showMessage('chargeSuccess', '✅ Charge enregistrée avec succès !');
+        document.getElementById('chargeForm').reset();
+        
+        // Réinitialiser la date à aujourd'hui
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('chargeDate').value = today;
+
+        // Masquer le champ description
+        document.getElementById('chargeDescriptionGroup').style.display = 'none';
+
+        // Recharger le dashboard et la liste
+        await loadDashboard();
+        await loadCharges();
+      } else {
+        showMessage('chargeError', data.error || 'Erreur lors de l\'enregistrement');
+      }
+    } catch (error) {
+      console.error('Erreur enregistrement charge:', error);
+      showMessage('chargeError', 'Erreur de connexion au serveur');
+    }
+  });
+}
+
+async function loadCharges() {
+  try {
+    const params = new URLSearchParams();
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    params.append('month', currentMonth);
+
+    const response = await fetch(`/api/charges-hors-compte?${params}`, { credentials: 'same-origin' });
+    const charges = await response.json();
+
+    const chargesList = document.getElementById('chargesList');
+    chargesList.innerHTML = '';
+
+    if (charges.length === 0) {
+      chargesList.innerHTML = '<p style="text-align: center; color: #666;">Aucune charge enregistrée ce mois-ci</p>';
+      return;
+    }
+
+    charges.forEach(c => {
+      const categoryLabel = {
+        'loyer': '🏠 Loyer',
+        'loyer_garage': '🚗 Loyer Garage',
+        'autre': '📌 Autre'
+      }[c.category] || c.category;
+
+      const row = document.createElement('div');
+      row.className = 'transaction-row';
+      row.innerHTML = `
+        <div class="transaction-info">
+          <div class="transaction-user">${c.display_name} - ${categoryLabel}</div>
+          <div class="transaction-date">${new Date(c.date).toLocaleDateString('fr-FR')}</div>
+          ${c.description ? `<div class="transaction-desc">${c.description}</div>` : ''}
+        </div>
+        <div class="transaction-amount">${formatMoney(c.amount)}</div>
+        <button class="btn-delete" onclick="deleteCharge(${c.id})">🗑️</button>
+      `;
+      chargesList.appendChild(row);
+    });
+  } catch (error) {
+    console.error('Erreur chargement charges:', error);
+  }
+}
+
+async function deleteCharge(id) {
+  if (!confirm('Êtes-vous sûr de vouloir supprimer cette charge ?')) return;
+
+  try {
+    const response = await fetch(`/api/charge-hors-compte/${id}`, {
+      method: 'DELETE',
+      credentials: 'same-origin'
+    });
+
+    const data = await response.json();
+    if (data.success) {
+      await loadDashboard();
+      await loadCharges();
+    }
+  } catch (error) {
+    console.error('Erreur suppression charge:', error);
+  }
 }
 
 // ========================================
@@ -783,6 +1035,36 @@ function initSettings() {
   // Afficher le username dans les paramètres
   document.getElementById('settingsUsername').textContent = currentUser.displayName;
 
+  // Charger et afficher les utilisateurs
+  loadUsers();
+
+  // Gestion ajout utilisateur
+  document.getElementById('addUserForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('newUsername').value.trim();
+    const displayName = document.getElementById('newDisplayName').value.trim() || username;
+    const password = document.getElementById('newPassword').value || '';
+
+    try {
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ username, password, display_name: displayName })
+      });
+      const data = await res.json();
+      if (data.success) {
+        document.getElementById('addUserForm').reset();
+        await loadUsers();
+      } else {
+        showMessage('passwordError', data.error || 'Erreur création utilisateur');
+      }
+    } catch (err) {
+      console.error('Erreur création utilisateur:', err);
+      showMessage('passwordError', 'Erreur serveur');
+    }
+  });
+
   // Formulaire de changement de mot de passe
   document.getElementById('passwordForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -830,6 +1112,64 @@ function initSettings() {
 // ========================================
 // UTILITAIRES
 // ========================================
+
+// Chargement et gestion des utilisateurs (settings)
+async function loadUsers() {
+  try {
+    const res = await fetch('/api/users', { credentials: 'same-origin' });
+    const users = await res.json();
+    const container = document.getElementById('usersList');
+    container.innerHTML = '';
+
+    users.forEach(u => {
+      const row = document.createElement('div');
+      row.className = 'user-row';
+      row.innerHTML = `
+        <input type="text" value="${u.display_name}" data-id="${u.id}" class="user-display-input" />
+        <button class="btn btn-sm" data-id="${u.id}">💾</button>
+      `;
+      container.appendChild(row);
+    });
+
+    // Attach save handlers
+    container.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = e.currentTarget.dataset.id;
+        const input = container.querySelector(`input[data-id='${id}']`);
+        const displayName = input.value.trim();
+        try {
+          await fetch(`/api/users/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ display_name: displayName })
+          });
+          await loadUsers();
+        } catch (err) {
+          console.error('Erreur mise à jour user:', err);
+        }
+      });
+    });
+  } catch (error) {
+    console.error('Erreur chargement users:', error);
+  }
+}
+
+// Auto-reload client when server version changes
+let _clientVersion = null;
+async function checkVersionAndReload() {
+  try {
+    const res = await fetch('/api/version');
+    const data = await res.json();
+    if (_clientVersion && data.version && data.version !== _clientVersion) {
+      console.log('Nouvelle version détectée, rechargement...');
+      window.location.reload(true);
+    }
+    _clientVersion = data.version;
+  } catch (err) {
+    // ignore
+  }
+}
 
 function formatMoney(amount) {
   return new Intl.NumberFormat('fr-FR', {

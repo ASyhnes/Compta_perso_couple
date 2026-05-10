@@ -167,16 +167,17 @@ app.get('/api/salaries/:month', requireAuth, (req, res) => {
 
 // Créer une nouvelle dépense
 app.post('/api/expenses', requireAuth, (req, res) => {
-  const { amount, date, store, type, beneficiary } = req.body;
+  const { amount, date, store, type, beneficiary, account } = req.body;
   const userId = req.session.userId;
 
   try {
     const stmt = db.prepare(`
-      INSERT INTO expenses (user_id, amount, date, store, type, beneficiary)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO expenses (user_id, amount, date, store, type, beneficiary, account)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
     
-    const result = stmt.run(userId, amount, date, store, type, beneficiary);
+    const acct = account || 'commun';
+    const result = stmt.run(userId, amount, date, store, type, beneficiary, acct);
     res.json({ success: true, id: result.lastInsertRowid });
   } catch (error) {
     console.error('Erreur création dépense:', error);
@@ -242,7 +243,7 @@ app.get('/api/expenses/:id', requireAuth, (req, res) => {
 // Modifier une dépense
 app.put('/api/expenses/:id', requireAuth, (req, res) => {
   const { id } = req.params;
-  const { amount, date, store, type, beneficiary } = req.body;
+  const { amount, date, store, type, beneficiary, account } = req.body;
   const userId = req.session.userId;
 
   try {
@@ -258,18 +259,11 @@ app.put('/api/expenses/:id', requireAuth, (req, res) => {
     }
 
     // Mettre à jour la dépense
-    const expenseIndex = db.data.expenses.findIndex(e => e.id === parseInt(id));
-    if (expenseIndex !== -1) {
-      db.data.expenses[expenseIndex] = {
-        ...db.data.expenses[expenseIndex],
-        amount: amount,
-        date: date,
-        store: store,
-        type: type,
-        beneficiary: beneficiary
-      };
-      db.save();
-    }
+    db.prepare(`
+      UPDATE expenses 
+      SET amount = ?, date = ?, store = ?, type = ?, beneficiary = ?, account = ?
+      WHERE id = ?
+    `).run(amount, date, store, type, beneficiary, account || 'commun', id);
 
     res.json({ success: true });
   } catch (error) {
@@ -308,69 +302,318 @@ app.get('/api/stats', requireAuth, (req, res) => {
   const { startDate, endDate, month } = req.query;
 
   try {
-    let dateCondition = '1=1';
-    const params = [];
+    // Construire condition de date pour différentes tables
+    let vCondition = '1=1';
+    let eCondition = '1=1';
+    let cCondition = '1=1';
+    const vParams = [];
+    const eParams = [];
+    const cParams = [];
 
     if (month) {
-      dateCondition = `strftime('%Y-%m', date) = ?`;
-      params.push(month);
-    } else {
-      if (startDate && endDate) {
-        dateCondition = 'date BETWEEN ? AND ?';
-        params.push(startDate, endDate);
-      }
+      vCondition = `strftime('%Y-%m', v.date) = ?`;
+      eCondition = `strftime('%Y-%m', e.date) = ?`;
+      cCondition = `strftime('%Y-%m', c.date) = ?`;
+      vParams.push(month); eParams.push(month); cParams.push(month);
+    } else if (startDate && endDate) {
+      vCondition = 'v.date BETWEEN ? AND ?';
+      eCondition = 'e.date BETWEEN ? AND ?';
+      cCondition = 'c.date BETWEEN ? AND ?';
+      vParams.push(startDate, endDate); eParams.push(startDate, endDate); cParams.push(startDate, endDate);
     }
 
-    // Total par utilisateur
-    const totalByUser = db.prepare(`
-      SELECT 
-        u.username,
-        u.display_name,
-        SUM(e.amount) as total,
-        COUNT(e.id) as count
-      FROM users u
-      LEFT JOIN expenses e ON u.id = e.user_id AND ${dateCondition}
-      GROUP BY u.id
-      ORDER BY u.id
-    `).all(...params);
+    // Récupérer utilisateurs
+    const users = db.prepare('SELECT id, username, display_name FROM users ORDER BY id').all();
 
-    // Total par type
+    // Virements par utilisateur
+    const virementsRows = db.prepare(`
+      SELECT v.user_id, COALESCE(SUM(v.amount),0) as virements
+      FROM virements_compte_commun v
+      WHERE ${vCondition}
+      GROUP BY v.user_id
+    `).all(...vParams);
+
+    // Charges loyer/garage par utilisateur
+    const chargesRows = db.prepare(`
+      SELECT c.user_id, COALESCE(SUM(c.amount),0) as charges_loyer
+      FROM charges_hors_compte c
+      WHERE ${cCondition} AND c.category IN ('loyer','loyer_garage')
+      GROUP BY c.user_id
+    `).all(...cParams);
+
+    // Dépenses du compte commun par utilisateur
+    const sharedRows = db.prepare(`
+      SELECT e.user_id, COALESCE(SUM(e.amount),0) as shared_spent
+      FROM expenses e
+      WHERE ${eCondition} AND e.account = 'commun'
+      GROUP BY e.user_id
+    `).all(...eParams);
+
+    // Dépenses personnelles (depuis compte commun) par utilisateur
+    const personalRows = db.prepare(`
+      SELECT e.user_id, COALESCE(SUM(e.amount),0) as personal_spent
+      FROM expenses e
+      WHERE ${eCondition} AND e.account = 'commun' AND e.beneficiary = 'Perso'
+      GROUP BY e.user_id
+    `).all(...eParams);
+
+    // Construire maps
+    const virementsMap = Object.fromEntries(virementsRows.map(r => [r.user_id, r.virements]));
+    const chargesMap = Object.fromEntries(chargesRows.map(r => [r.user_id, r.charges_loyer]));
+    const sharedMap = Object.fromEntries(sharedRows.map(r => [r.user_id, r.shared_spent]));
+    const personalMap = Object.fromEntries(personalRows.map(r => [r.user_id, r.personal_spent]));
+
+    // Initial adjusted spent = shared_spent
+    const adjusted = {};
+    users.forEach(u => adjusted[u.id] = sharedMap[u.id] || 0);
+
+    const n = users.length;
+    // Réattribuer les excédents : si un utilisateur dépense plus que son virement,
+    // la différence est considérée payée par les autres (répartition égale entre les autres)
+    users.forEach(u => {
+      const vid = u.id;
+      const vire = virementsMap[vid] || 0;
+      const spent = adjusted[vid] || 0;
+      if (spent > vire) {
+        const excess = spent - vire;
+        adjusted[vid] = vire; // on ramène au montant viré
+        const perOther = n > 1 ? excess / (n - 1) : 0;
+        users.forEach(ou => {
+          if (ou.id !== vid) adjusted[ou.id] = (adjusted[ou.id] || 0) + perOther;
+        });
+      }
+    });
+
+    // Ajouter les charges loyer/garage (ces montants ont été payés par l'utilisateur)
+    users.forEach(u => {
+      adjusted[u.id] = (adjusted[u.id] || 0) + (chargesMap[u.id] || 0);
+    });
+
+    // Construire tableaux de sortie
+    const totalByUser = users.map(u => ({
+      username: u.username,
+      display_name: u.display_name,
+      total: +(adjusted[u.id] || 0)
+    }));
+
+    const contributionsByUser = users.map(u => ({
+      username: u.username,
+      display_name: u.display_name,
+      contributions: +((virementsMap[u.id] || 0) + (chargesMap[u.id] || 0))
+    }));
+
+    // Totaux classiques pour graphes
     const totalByType = db.prepare(`
       SELECT type, SUM(amount) as total, COUNT(*) as count
       FROM expenses
-      WHERE ${dateCondition}
+      WHERE ${eCondition}
       GROUP BY type
-    `).all(...params);
+    `).all(...eParams);
 
-    // Total par bénéficiaire
     const totalByBeneficiary = db.prepare(`
-      SELECT beneficiary, SUM(amount) as total, COUNT(*) as count
-      FROM expenses
-      WHERE ${dateCondition}
-      GROUP BY beneficiary
-    `).all(...params);
+      SELECT e.beneficiary, SUM(e.amount) as total, COUNT(*) as count
+      FROM expenses e
+      WHERE ${eCondition}
+      GROUP BY e.beneficiary
+    `).all(...eParams);
 
-    // Détail par utilisateur et bénéficiaire
     const detailByUserAndBeneficiary = db.prepare(`
-      SELECT 
-        u.username,
-        u.display_name,
-        e.beneficiary,
-        SUM(e.amount) as total
+      SELECT u.username, u.display_name, e.beneficiary, SUM(e.amount) as total
       FROM users u
-      LEFT JOIN expenses e ON u.id = e.user_id AND ${dateCondition}
+      LEFT JOIN expenses e ON u.id = e.user_id AND ${eCondition}
       GROUP BY u.id, e.beneficiary
       ORDER BY u.id
-    `).all(...params);
+    `).all(...eParams);
+
+    const personalByUser = users.map(u => ({
+      username: u.username,
+      display_name: u.display_name,
+      personal: +(personalMap[u.id] || 0)
+    }));
 
     res.json({
       totalByUser,
+      contributionsByUser,
       totalByType,
       totalByBeneficiary,
-      detailByUserAndBeneficiary
+      detailByUserAndBeneficiary: detailByUserAndBeneficiary,
+      personalByUser
     });
   } catch (error) {
     console.error('Erreur récupération stats:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// ============================================
+// ROUTES VIREMENTS COMPTE COMMUN
+// ============================================
+
+// Créer un virement vers le compte commun
+app.post('/api/virement', requireAuth, (req, res) => {
+  const { amount, date } = req.body;
+  const userId = req.session.userId;
+
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO virements_compte_commun (user_id, amount, date)
+      VALUES (?, ?, ?)
+    `);
+    
+    const result = stmt.run(userId, amount, date);
+    res.json({ success: true, id: result.lastInsertRowid });
+  } catch (error) {
+    console.error('Erreur création virement:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Récupérer les virements (avec filtres optionnels)
+app.get('/api/virements', requireAuth, (req, res) => {
+  const { startDate, endDate, month } = req.query;
+
+  try {
+    let query = `
+      SELECT v.*, u.username, u.display_name
+      FROM virements_compte_commun v
+      JOIN users u ON v.user_id = u.id
+      WHERE 1=1
+    `;
+    const params = [];
+
+    if (month) {
+      query += ` AND strftime('%Y-%m', v.date) = ?`;
+      params.push(month);
+    } else {
+      if (startDate) {
+        query += ` AND v.date >= ?`;
+        params.push(startDate);
+      }
+      if (endDate) {
+        query += ` AND v.date <= ?`;
+        params.push(endDate);
+      }
+    }
+
+    query += ` ORDER BY v.date DESC, v.created_at DESC`;
+
+    const virements = db.prepare(query).all(...params);
+    res.json(virements);
+  } catch (error) {
+    console.error('Erreur récupération virements:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Supprimer un virement
+app.delete('/api/virement/:id', requireAuth, (req, res) => {
+  const { id } = req.params;
+  const userId = req.session.userId;
+
+  try {
+    const virement = db.prepare('SELECT user_id FROM virements_compte_commun WHERE id = ?').get(id);
+    
+    if (!virement) {
+      return res.status(404).json({ error: 'Virement non trouvé' });
+    }
+
+    if (virement.user_id !== userId) {
+      return res.status(403).json({ error: 'Non autorisé' });
+    }
+
+    db.prepare('DELETE FROM virements_compte_commun WHERE id = ?').run(id);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erreur suppression virement:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// ============================================
+// ROUTES CHARGES HORS COMPTE
+// ============================================
+
+// Créer une charge hors compte
+app.post('/api/charge-hors-compte', requireAuth, (req, res) => {
+  const { amount, date, category, description } = req.body;
+  const userId = req.session.userId;
+
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO charges_hors_compte (user_id, amount, date, category, description)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    
+    const result = stmt.run(userId, amount, date, category, description || null);
+    res.json({ success: true, id: result.lastInsertRowid });
+  } catch (error) {
+    console.error('Erreur création charge:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Récupérer les charges hors compte (avec filtres optionnels)
+app.get('/api/charges-hors-compte', requireAuth, (req, res) => {
+  const { startDate, endDate, month, category } = req.query;
+
+  try {
+    let query = `
+      SELECT c.*, u.username, u.display_name
+      FROM charges_hors_compte c
+      JOIN users u ON c.user_id = u.id
+      WHERE 1=1
+    `;
+    const params = [];
+
+    if (month) {
+      query += ` AND strftime('%Y-%m', c.date) = ?`;
+      params.push(month);
+    } else {
+      if (startDate) {
+        query += ` AND c.date >= ?`;
+        params.push(startDate);
+      }
+      if (endDate) {
+        query += ` AND c.date <= ?`;
+        params.push(endDate);
+      }
+    }
+
+    if (category) {
+      query += ` AND c.category = ?`;
+      params.push(category);
+    }
+
+    query += ` ORDER BY c.date DESC, c.created_at DESC`;
+
+    const charges = db.prepare(query).all(...params);
+    res.json(charges);
+  } catch (error) {
+    console.error('Erreur récupération charges:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Supprimer une charge
+app.delete('/api/charge-hors-compte/:id', requireAuth, (req, res) => {
+  const { id } = req.params;
+  const userId = req.session.userId;
+
+  try {
+    const charge = db.prepare('SELECT user_id FROM charges_hors_compte WHERE id = ?').get(id);
+    
+    if (!charge) {
+      return res.status(404).json({ error: 'Charge non trouvée' });
+    }
+
+    if (charge.user_id !== userId) {
+      return res.status(403).json({ error: 'Non autorisé' });
+    }
+
+    db.prepare('DELETE FROM charges_hors_compte WHERE id = ?').run(id);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erreur suppression charge:', error);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
@@ -410,6 +653,59 @@ app.post('/api/change-password', requireAuth, (req, res) => {
   } catch (error) {
     console.error('Erreur changement mot de passe:', error);
     res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// ============================================
+// ROUTES UTILISATEURS
+// ============================================
+
+// Récupérer les utilisateurs
+app.get('/api/users', requireAuth, (req, res) => {
+  try {
+    const users = db.prepare('SELECT id, username, display_name FROM users ORDER BY id').all();
+    res.json(users);
+  } catch (error) {
+    console.error('Erreur récupération utilisateurs:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Créer un utilisateur
+app.post('/api/users', requireAuth, (req, res) => {
+  const { username, password, display_name } = req.body;
+  try {
+    const hash = bcrypt.hashSync(password || username, 10);
+    const stmt = db.prepare('INSERT INTO users (username, password, display_name) VALUES (?, ?, ?)');
+    const result = stmt.run(username, hash, display_name || username);
+    res.json({ success: true, id: result.lastInsertRowid });
+  } catch (error) {
+    console.error('Erreur création utilisateur:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Mettre à jour le display_name d'un utilisateur
+app.put('/api/users/:id', requireAuth, (req, res) => {
+  const { id } = req.params;
+  const { display_name } = req.body;
+  try {
+    db.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(display_name, id);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erreur mise à jour utilisateur:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Version simple pour rechargement automatique (mtime de server.js)
+const fs = require('fs');
+app.get('/api/version', (req, res) => {
+  try {
+    const stat = fs.statSync(path.resolve(__dirname, 'server.js'));
+    res.json({ version: stat.mtimeMs });
+  } catch (error) {
+    res.json({ version: Date.now() });
   }
 });
 
