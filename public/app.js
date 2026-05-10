@@ -492,6 +492,20 @@ function updateUserChart(data) {
       }
     }
   });
+
+  // ========================================
+  // Mobile touch support for userChart
+  // ========================================
+  ctx.addEventListener('touchend', (event) => {
+    event.preventDefault();
+    const elements = charts.userChart.getElementsAtEventForMode(event, 'nearest', { intersect: true }, true);
+    if (elements && elements.length > 0) {
+      const index = elements[0].index;
+      const username = data[index].username;
+      console.log('📱 [userChart touch] Tapped bar for user:', username);
+      showUserExpenseDetails(username, data[index].display_name);
+    }
+  }, false);
 }
 
 // ========================================
