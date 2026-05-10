@@ -656,6 +656,8 @@ body {
    ====================================== */
 canvas {
   max-height: 300px;
+  min-height: 250px !important;
+  height: 300px !important;
 }
 
 /* ======================================

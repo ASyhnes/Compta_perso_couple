@@ -1403,7 +1403,7 @@ function updateMonthlyExpensesChart(monthlyData) {
     },
     options: {
       responsive: true,
-      maintainAspectRatio: true,
+      maintainAspectRatio: false,
       plugins: {
         legend: {
           position: 'top'
@@ -1459,7 +1459,7 @@ function updateCumulativeExpensesChart(monthlyData) {
     },
     options: {
       responsive: true,
-      maintainAspectRatio: true,
+      maintainAspectRatio: false,
       plugins: {
         legend: {
           position: 'top'
@@ -1544,7 +1544,7 @@ function updateRatioChart(monthlyData) {
     },
     options: {
       responsive: true,
-      maintainAspectRatio: true,
+      maintainAspectRatio: false,
       plugins: {
         legend: {
           position: 'top'
