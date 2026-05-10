@@ -1635,6 +1635,22 @@ async function loadUsers() {
     });
 
     // Attach save handlers
+  // ========================================
+  // Debug helpers (exposer certaines fonctions à la console)
+  // ========================================
+  try {
+    window.loadAnalytics = loadAnalytics;
+    window.loadDashboard = loadDashboard;
+    window.updateMonthlyExpensesChart = updateMonthlyExpensesChart;
+    window.updateCumulativeExpensesChart = updateCumulativeExpensesChart;
+    window.updateRatioChart = updateRatioChart;
+    window.updateMonthlyTable = updateMonthlyTable;
+    // autres helpers utiles
+    window.loadUsers = typeof loadUsers === 'function' ? loadUsers : undefined;
+  } catch (e) {
+    // silent fallback si l'environnement empêche l'accès à window
+    console.debug('Debug helpers not attached to window:', e);
+  }
     container.querySelectorAll('button').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         const id = e.currentTarget.dataset.id;
