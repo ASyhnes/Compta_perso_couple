@@ -1057,7 +1057,7 @@ function initSettings() {
     e.preventDefault();
     const username = document.getElementById('newUsername').value.trim();
     const displayName = document.getElementById('newDisplayName').value.trim() || username;
-    const password = document.getElementById('newPassword').value || '';
+    const password = document.getElementById('newUserPassword').value || '';
 
     try {
       const res = await fetch('/api/users', {
