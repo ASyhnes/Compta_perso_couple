@@ -384,10 +384,8 @@ app.get('/api/stats', requireAuth, (req, res) => {
       }
     });
 
-    // Ajouter les charges loyer/garage (ces montants ont été payés par l'utilisateur)
-    users.forEach(u => {
-      adjusted[u.id] = (adjusted[u.id] || 0) + (chargesMap[u.id] || 0);
-    });
+    // NOTE: charges loyer/garage sont déjà incluses dans expenses si enregistrées via le formulaire
+    // Ne pas les ajouter en double ici — elles font partie des dépenses du compte commun
 
     // Construire tableaux de sortie
     const totalByUser = users.map(u => ({
