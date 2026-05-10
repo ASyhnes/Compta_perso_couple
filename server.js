@@ -448,7 +448,7 @@ app.get('/api/monthly-analytics', requireAuth, (req, res) => {
   try {
     // Récupérer tous les mois avec des dépenses
     const monthsWithExpenses = db.prepare(`
-      SELECT DISTINCT strftime('%Y-%m', date) as month
+      SELECT DISTINCT substr(date, 1, 7) as month
       FROM expenses
       ORDER BY month ASC
     `).all();
@@ -463,7 +463,7 @@ app.get('/api/monthly-analytics', requireAuth, (req, res) => {
           u.display_name,
           COALESCE(SUM(e.amount), 0) as total
         FROM users u
-        LEFT JOIN expenses e ON e.user_id = u.id AND strftime('%Y-%m', e.date) = ?
+        LEFT JOIN expenses e ON e.user_id = u.id AND substr(e.date,1,7) = ?
         GROUP BY u.id, u.username, u.display_name
         ORDER BY u.id
       `).all(month);
@@ -480,13 +480,13 @@ app.get('/api/monthly-analytics', requireAuth, (req, res) => {
         const virements = db.prepare(`
           SELECT COALESCE(SUM(amount), 0) as total
           FROM virements_compte_commun
-          WHERE user_id = ? AND strftime('%Y-%m', date) = ?
+          WHERE user_id = ? AND substr(date,1,7) = ?
         `).get(user.id, month);
 
         const loyer = db.prepare(`
           SELECT COALESCE(SUM(amount), 0) as total
           FROM charges_hors_compte
-          WHERE user_id = ? AND strftime('%Y-%m', date) = ? AND category IN ('loyer', 'loyer_garage')
+          WHERE user_id = ? AND substr(date,1,7) = ? AND category IN ('loyer', 'loyer_garage')
         `).get(user.id, month);
 
         return {
