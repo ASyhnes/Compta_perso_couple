@@ -66,6 +66,9 @@
     <button class="nav-btn" data-view="salaries">
       💵 Salaires
     </button>
+    <button class="nav-btn" data-view="analytics">
+      📈 Visualisation Générale
+    </button>
     <button class="nav-btn" data-view="settings">
       ⚙️ Paramètres
     </button>
@@ -327,6 +330,50 @@
       <div class="card">
         <h3>📊 Salaires Enregistrés</h3>
         <div id="salariesHistory" class="salaries-history"></div>
+      </div>
+    </section>
+
+    <!-- Vue Visualisation Générale -->
+    <section id="analytics-view" class="view">
+      <div class="view-header">
+        <h2>📈 Visualisation Générale</h2>
+      </div>
+
+      <div class="card">
+        <p class="info-text">📊 Évolution mensuelle des dépenses et suivi des ratios d'équité/égalité</p>
+      </div>
+
+      <!-- Graphique Évolution des dépenses par personne -->
+      <div class="card">
+        <h3>📈 Évolution des Dépenses par Personne (Mois par Mois)</h3>
+        <canvas id="monthlyExpensesChart"></canvas>
+      </div>
+
+      <!-- Graphique Dépenses cumulées -->
+      <div class="card">
+        <h3>📊 Dépenses Cumulées</h3>
+        <canvas id="cumulativeExpensesChart"></canvas>
+      </div>
+
+      <!-- Graphique Ratio d'équité/égalité -->
+      <div class="card">
+        <h3>⚖️ Suivi du Ratio d'Équité/Égalité</h3>
+        <div class="balance-mode" style="margin-bottom: 1rem;">
+          <label class="toggle-label">
+            <input type="checkbox" id="analyticsModeToggle">
+            <span>Mode Égalité (règle 2/3)</span>
+          </label>
+          <p class="mode-description" id="analyticsModeDescription">
+            Mode Équitabilité : Ratio au prorata du salaire
+          </p>
+        </div>
+        <canvas id="ratioChart"></canvas>
+      </div>
+
+      <!-- Tableau récapitulatif par mois -->
+      <div class="card">
+        <h3>📋 Récapitulatif Mensuel</h3>
+        <div id="monthlyTable" class="monthly-table"></div>
       </div>
     </section>
 

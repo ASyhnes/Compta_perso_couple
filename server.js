@@ -445,6 +445,74 @@ app.get('/api/stats', requireAuth, (req, res) => {
   }
 });
 
+// Données mensuelles pour visualisation générale
+app.get('/api/monthly-analytics', requireAuth, (req, res) => {
+  try {
+    // Récupérer tous les mois avec des dépenses
+    const monthsWithExpenses = db.prepare(`
+      SELECT DISTINCT strftime('%Y-%m', date) as month
+      FROM expenses
+      ORDER BY month ASC
+    `).all();
+
+    const users = db.prepare('SELECT id, username, display_name FROM users ORDER BY id').all();
+    
+    const monthlyData = monthsWithExpenses.map(({ month }) => {
+      // Dépenses par utilisateur pour ce mois
+      const expensesByUser = db.prepare(`
+        SELECT 
+          u.username,
+          u.display_name,
+          COALESCE(SUM(e.amount), 0) as total
+        FROM users u
+        LEFT JOIN expenses e ON e.user_id = u.id AND strftime('%Y-%m', e.date) = ?
+        GROUP BY u.id, u.username, u.display_name
+        ORDER BY u.id
+      `).all(month);
+
+      // Salaires du mois
+      const salaries = db.prepare(`
+        SELECT username, amount
+        FROM salaries
+        WHERE month = ?
+      `).all(month);
+
+      // Contributions du mois (virements + loyer)
+      const contributionsByUser = users.map(user => {
+        const virements = db.prepare(`
+          SELECT COALESCE(SUM(amount), 0) as total
+          FROM virements_compte_commun
+          WHERE user_id = ? AND strftime('%Y-%m', date) = ?
+        `).get(user.id, month);
+
+        const loyer = db.prepare(`
+          SELECT COALESCE(SUM(amount), 0) as total
+          FROM charges_hors_compte
+          WHERE user_id = ? AND strftime('%Y-%m', date) = ? AND category IN ('loyer', 'loyer_garage')
+        `).get(user.id, month);
+
+        return {
+          username: user.username,
+          display_name: user.display_name,
+          contributions: (virements?.total || 0) + (loyer?.total || 0)
+        };
+      });
+
+      return {
+        month,
+        expensesByUser,
+        salaries,
+        contributionsByUser
+      };
+    });
+
+    res.json(monthlyData);
+  } catch (error) {
+    console.error('Erreur récupération données mensuelles:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 // ============================================
 // ROUTES VIREMENTS COMPTE COMMUN
 // ============================================

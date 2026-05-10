@@ -1042,3 +1042,50 @@ body.dark-theme .expense-type {
     margin-top: 0.5rem;
   }
 }
+
+/* ======================================
+   TABLEAU MENSUEL (ANALYTICS)
+   ====================================== */
+.monthly-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.monthly-data-table thead {
+  background: var(--primary);
+  color: white;
+}
+
+.monthly-data-table th {
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.monthly-data-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.monthly-data-table tbody tr:hover {
+  background: var(--bg);
+}
+
+.monthly-data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+@media (max-width: 768px) {
+  .monthly-data-table {
+    font-size: 0.875rem;
+  }
+  
+  .monthly-data-table th,
+  .monthly-data-table td {
+    padding: 0.5rem;
+  }
+}

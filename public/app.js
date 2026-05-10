@@ -99,6 +99,8 @@ function initNavigation() {
         loadVirements();
       } else if (viewName === 'charges-hors-compte') {
         loadCharges();
+      } else if (viewName === 'analytics') {
+        loadAnalytics();
       } else if (viewName === 'settings') {
         document.getElementById('settingsUsername').textContent = currentUser.displayName;
       }
@@ -1324,6 +1326,280 @@ function initSettings() {
       showMessage('passwordError', 'Erreur de connexion au serveur');
     }
   });
+}
+
+// ========================================
+// VISUALISATION GÉNÉRALE (ANALYTICS)
+// ========================================
+
+let analyticsMode = 'equity'; // 'equity' ou 'equality'
+
+async function loadAnalytics() {
+  try {
+    const monthlyData = await fetch('/api/monthly-analytics', { credentials: 'same-origin' }).then(r => r.json());
+    
+    if (!monthlyData || monthlyData.length === 0) {
+      document.getElementById('monthlyTable').innerHTML = '<p>Aucune donnée disponible</p>';
+      return;
+    }
+
+    // Initialiser le toggle du mode
+    initAnalyticsModeToggle();
+
+    // Créer les graphiques
+    updateMonthlyExpensesChart(monthlyData);
+    updateCumulativeExpensesChart(monthlyData);
+    updateRatioChart(monthlyData);
+    updateMonthlyTable(monthlyData);
+  } catch (error) {
+    console.error('Erreur chargement analytics:', error);
+  }
+}
+
+function initAnalyticsModeToggle() {
+  const toggle = document.getElementById('analyticsModeToggle');
+  const description = document.getElementById('analyticsModeDescription');
+  
+  toggle.addEventListener('change', async () => {
+    if (toggle.checked) {
+      analyticsMode = 'equality';
+      description.textContent = 'Mode Égalité : David dépense 2/3 de plus que Léo (ratio 1.66:1)';
+    } else {
+      analyticsMode = 'equity';
+      description.textContent = 'Mode Équitabilité : Ratio au prorata du salaire';
+    }
+    
+    // Recharger juste le graphique de ratio
+    const monthlyData = await fetch('/api/monthly-analytics', { credentials: 'same-origin' }).then(r => r.json());
+    updateRatioChart(monthlyData);
+  });
+}
+
+function updateMonthlyExpensesChart(monthlyData) {
+  const ctx = document.getElementById('monthlyExpensesChart');
+  
+  if (charts.monthlyExpensesChart) {
+    charts.monthlyExpensesChart.destroy();
+  }
+
+  const months = monthlyData.map(d => formatMonth(d.month));
+  const users = monthlyData[0]?.expensesByUser || [];
+  
+  const datasets = users.map((user, index) => {
+    return {
+      label: user.display_name,
+      data: monthlyData.map(d => d.expensesByUser[index]?.total || 0),
+      borderColor: index === 0 ? '#6366f1' : '#10b981',
+      backgroundColor: index === 0 ? 'rgba(99, 102, 241, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+      tension: 0.4
+    };
+  });
+
+  charts.monthlyExpensesChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: months,
+      datasets: datasets
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: {
+          position: 'top'
+        },
+        tooltip: {
+          callbacks: {
+            label: (context) => `${context.dataset.label}: ${formatMoney(context.parsed.y)}`
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: (value) => formatMoney(value)
+          }
+        }
+      }
+    }
+  });
+}
+
+function updateCumulativeExpensesChart(monthlyData) {
+  const ctx = document.getElementById('cumulativeExpensesChart');
+  
+  if (charts.cumulativeExpensesChart) {
+    charts.cumulativeExpensesChart.destroy();
+  }
+
+  const months = monthlyData.map(d => formatMonth(d.month));
+  const users = monthlyData[0]?.expensesByUser || [];
+  
+  const datasets = users.map((user, index) => {
+    let cumulative = 0;
+    return {
+      label: user.display_name + ' (Cumulé)',
+      data: monthlyData.map(d => {
+        cumulative += d.expensesByUser[index]?.total || 0;
+        return cumulative;
+      }),
+      borderColor: index === 0 ? '#6366f1' : '#10b981',
+      backgroundColor: index === 0 ? 'rgba(99, 102, 241, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+      fill: true,
+      tension: 0.4
+    };
+  });
+
+  charts.cumulativeExpensesChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: months,
+      datasets: datasets
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: {
+          position: 'top'
+        },
+        tooltip: {
+          callbacks: {
+            label: (context) => `${context.dataset.label}: ${formatMoney(context.parsed.y)}`
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: (value) => formatMoney(value)
+          }
+        }
+      }
+    }
+  });
+}
+
+function updateRatioChart(monthlyData) {
+  const ctx = document.getElementById('ratioChart');
+  
+  if (charts.ratioChart) {
+    charts.ratioChart.destroy();
+  }
+
+  const months = monthlyData.map(d => formatMonth(d.month));
+  
+  // Calculer les ratios pour chaque mois
+  const ratios = monthlyData.map(d => {
+    const davidExpense = d.expensesByUser.find(u => u.username === 'david')?.total || 0;
+    const leoExpense = d.expensesByUser.find(u => u.username === 'leo')?.total || 0;
+    
+    if (analyticsMode === 'equity') {
+      // Mode Équitabilité: basé sur les contributions
+      const davidContrib = d.contributionsByUser.find(u => u.username === 'david')?.contributions || 0;
+      const leoContrib = d.contributionsByUser.find(u => u.username === 'leo')?.contributions || 0;
+      const totalContrib = davidContrib + leoContrib;
+      
+      if (totalContrib === 0) return 0;
+      
+      const davidExpectedRatio = davidContrib / totalContrib;
+      const totalExpenses = davidExpense + leoExpense;
+      const davidActualRatio = totalExpenses > 0 ? davidExpense / totalExpenses : 0;
+      
+      // Retourner la différence en %
+      return ((davidActualRatio - davidExpectedRatio) * 100);
+    } else {
+      // Mode Égalité: ratio 1.66
+      if (leoExpense === 0) return 0;
+      const actualRatio = davidExpense / leoExpense;
+      const targetRatio = 1.66;
+      return ((actualRatio - targetRatio) / targetRatio * 100);
+    }
+  });
+
+  charts.ratioChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: months,
+      datasets: [
+        {
+          label: analyticsMode === 'equity' ? 'Écart d\'équité (%)' : 'Écart d\'égalité (%)',
+          data: ratios,
+          borderColor: '#f59e0b',
+          backgroundColor: 'rgba(245, 158, 11, 0.1)',
+          fill: true,
+          tension: 0.4
+        },
+        {
+          label: 'Équilibre parfait',
+          data: months.map(() => 0),
+          borderColor: '#10b981',
+          borderDash: [5, 5],
+          borderWidth: 2,
+          pointRadius: 0
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: {
+          position: 'top'
+        },
+        tooltip: {
+          callbacks: {
+            label: (context) => {
+              if (context.datasetIndex === 0) {
+                const value = context.parsed.y;
+                return `Écart: ${value > 0 ? '+' : ''}${value.toFixed(1)}%`;
+              }
+              return context.dataset.label;
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          ticks: {
+            callback: (value) => `${value}%`
+          }
+        }
+      }
+    }
+  });
+}
+
+function updateMonthlyTable(monthlyData) {
+  const tableDiv = document.getElementById('monthlyTable');
+  
+  let html = '<table class="monthly-data-table"><thead><tr>';
+  html += '<th>Mois</th>';
+  html += '<th>David</th>';
+  html += '<th>Léo</th>';
+  html += '<th>Total</th>';
+  html += '<th>Ratio</th>';
+  html += '</tr></thead><tbody>';
+  
+  monthlyData.forEach(d => {
+    const davidExpense = d.expensesByUser.find(u => u.username === 'david')?.total || 0;
+    const leoExpense = d.expensesByUser.find(u => u.username === 'leo')?.total || 0;
+    const total = davidExpense + leoExpense;
+    const ratio = leoExpense > 0 ? (davidExpense / leoExpense).toFixed(2) : 'N/A';
+    
+    html += '<tr>';
+    html += `<td><strong>${formatMonth(d.month)}</strong></td>`;
+    html += `<td>${formatMoney(davidExpense)}</td>`;
+    html += `<td>${formatMoney(leoExpense)}</td>`;
+    html += `<td><strong>${formatMoney(total)}</strong></td>`;
+    html += `<td>${ratio}</td>`;
+    html += '</tr>';
+  });
+  
+  html += '</tbody></table>';
+  tableDiv.innerHTML = html;
 }
 
 // ========================================
