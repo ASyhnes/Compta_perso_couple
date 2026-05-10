@@ -1341,9 +1341,60 @@ async function loadAnalytics() {
     console.log('📊 [loadAnalytics] Data received:', monthlyData);
     
     if (!monthlyData || monthlyData.length === 0) {
-      console.warn('⚠️ [loadAnalytics] No data - monthlyData is empty or null');
-      document.getElementById('monthlyTable').innerHTML = '<p>Aucune donnée disponible</p>';
-      return;
+      console.warn('⚠️ [loadAnalytics] No data - monthlyData is empty or null, attempting client-side fallback');
+
+      // Fallback: construire monthlyData côté client à partir des endpoints existants
+      try {
+        const [expenses, users, virements, charges] = await Promise.all([
+          fetch('/api/expenses', { credentials: 'same-origin' }).then(r => r.json()),
+          fetch('/api/users', { credentials: 'same-origin' }).then(r => r.json()),
+          fetch('/api/virements', { credentials: 'same-origin' }).then(r => r.json()),
+          fetch('/api/charges-hors-compte', { credentials: 'same-origin' }).then(r => r.json())
+        ]);
+
+        // Récupérer la liste des mois présents
+        const monthsSet = new Set();
+        expenses.forEach(e => { if (e.date) monthsSet.add(e.date.substr(0,7)); });
+        virements.forEach(v => { if (v.date) monthsSet.add(v.date.substr(0,7)); });
+        charges.forEach(c => { if (c.date) monthsSet.add(c.date.substr(0,7)); });
+
+        const months = Array.from(monthsSet).sort();
+
+        const built = months.map(month => {
+          const expensesByUser = users.map(u => ({
+            username: u.username,
+            display_name: u.display_name,
+            total: expenses.filter(e => e.user_id === u.id && e.date && e.date.substr(0,7) === month).reduce((s,x)=>s+(Number(x.amount)||0),0)
+          }));
+
+          const contributionsByUser = users.map(u => {
+            const vire = virements.filter(v => v.user_id === u.id && v.date && v.date.substr(0,7) === month).reduce((s,x)=>s+(Number(x.amount)||0),0);
+            const loyer = charges.filter(c => c.user_id === u.id && c.date && c.date.substr(0,7) === month && ['loyer','loyer_garage'].includes(c.category)).reduce((s,x)=>s+(Number(x.amount)||0),0);
+            return { username: u.username, display_name: u.display_name, contributions: vire + loyer };
+          });
+
+          return { month, expensesByUser, salaries: [], contributionsByUser };
+        });
+
+        if (built.length === 0) {
+          document.getElementById('monthlyTable').innerHTML = '<p>Aucune donnée disponible</p>';
+          return;
+        }
+
+        console.log('📊 [loadAnalytics] Built monthlyData fallback:', built);
+        // continuer avec les graphiques
+        initAnalyticsModeToggle();
+        updateMonthlyExpensesChart(built);
+        updateCumulativeExpensesChart(built);
+        updateRatioChart(built);
+        updateMonthlyTable(built);
+        console.log('✅ [loadAnalytics] Charts rendered from fallback data');
+        return;
+      } catch (err) {
+        console.error('❌ [loadAnalytics] Fallback failed:', err);
+        document.getElementById('monthlyTable').innerHTML = '<p>Aucune donnée disponible</p>';
+        return;
+      }
     }
 
     console.log('📊 [loadAnalytics] Data OK, initializing charts...');
