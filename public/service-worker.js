@@ -1,5 +1,5 @@
 // Service Worker pour la PWA
-const CACHE_NAME = 'compta-couple-v1';
+const CACHE_NAME = 'compta-couple-v2';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -17,6 +17,7 @@ self.addEventListener('install', (event) => {
         console.log('Cache ouvert');
         return cache.addAll(urlsToCache);
       })
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -32,12 +33,19 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
 });
 
 // Interception des requêtes
 self.addEventListener('fetch', (event) => {
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then((response) => {

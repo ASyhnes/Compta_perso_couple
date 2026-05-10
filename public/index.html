@@ -51,6 +51,29 @@
   </div>
 
   <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js').then((registration) => {
+          registration.update();
+
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            if (!newWorker) {
+              return;
+            }
+
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                window.location.reload();
+              }
+            });
+          });
+        }).catch((error) => {
+          console.warn('Service worker registration failed:', error);
+        });
+      });
+    }
+
     // Vérifier si déjà connecté
     fetch('/api/session', { credentials: 'same-origin' })
       .then(res => res.json())
