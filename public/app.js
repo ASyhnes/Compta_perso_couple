@@ -1388,7 +1388,10 @@ function updateMonthlyExpensesChart(monthlyData) {
   const datasets = users.map((user, index) => {
     return {
       label: user.display_name,
-      data: monthlyData.map(d => d.expensesByUser[index]?.total || 0),
+      data: monthlyData.map(d => {
+        const found = d.expensesByUser.find(u => u.username === user.username);
+        return found?.total || 0;
+      }),
       borderColor: index === 0 ? '#6366f1' : '#10b981',
       backgroundColor: index === 0 ? 'rgba(99, 102, 241, 0.1)' : 'rgba(16, 185, 129, 0.1)',
       tension: 0.4
@@ -1441,7 +1444,8 @@ function updateCumulativeExpensesChart(monthlyData) {
     return {
       label: user.display_name + ' (Cumulé)',
       data: monthlyData.map(d => {
-        cumulative += d.expensesByUser[index]?.total || 0;
+        const found = d.expensesByUser.find(u => u.username === user.username);
+        cumulative += found?.total || 0;
         return cumulative;
       }),
       borderColor: index === 0 ? '#6366f1' : '#10b981',
