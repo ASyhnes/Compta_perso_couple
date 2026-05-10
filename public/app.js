@@ -461,6 +461,13 @@ function updateUserChart(data) {
     options: {
       responsive: true,
       maintainAspectRatio: true,
+      onClick: (event, activeElements) => {
+        if (activeElements.length > 0) {
+          const index = activeElements[0].index;
+          const username = data[index].username;
+          showUserExpenseDetails(username, data[index].display_name);
+        }
+      },
       plugins: {
         legend: {
           display: false
@@ -468,7 +475,7 @@ function updateUserChart(data) {
         tooltip: {
           callbacks: {
             label: (context) => {
-              return `${formatMoney(context.parsed.y)}`;
+              return `${formatMoney(context.parsed.y)} - Cliquez pour voir le détail`;
             }
           }
         }
@@ -483,6 +490,126 @@ function updateUserChart(data) {
       }
     }
   });
+}
+
+// ========================================
+// DÉTAIL DES DÉPENSES PAR UTILISATEUR
+// ========================================
+
+async function showUserExpenseDetails(username, displayName) {
+  try {
+    // Récupérer les paramètres de période actuels
+    const params = new URLSearchParams();
+    if (currentPeriod === 'month') {
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      params.append('month', currentMonth);
+    }
+
+    // Récupérer toutes les dépenses
+    const expenses = await fetch(`/api/expenses?${params}`, { credentials: 'same-origin' }).then(r => r.json());
+    
+    // Filtrer pour l'utilisateur sélectionné
+    const userExpenses = expenses.filter(e => e.username === username);
+    
+    // Créer un résumé par type
+    const byType = {};
+    const byBeneficiary = {};
+    let total = 0;
+    
+    userExpenses.forEach(e => {
+      total += parseFloat(e.amount);
+      
+      if (!byType[e.type]) {
+        byType[e.type] = { total: 0, count: 0 };
+      }
+      byType[e.type].total += parseFloat(e.amount);
+      byType[e.type].count++;
+      
+      if (!byBeneficiary[e.beneficiary]) {
+        byBeneficiary[e.beneficiary] = { total: 0, count: 0 };
+      }
+      byBeneficiary[e.beneficiary].total += parseFloat(e.amount);
+      byBeneficiary[e.beneficiary].count++;
+    });
+    
+    // Construire le HTML
+    let html = `
+      <div class="expense-details-overlay" onclick="closeExpenseDetails()">
+        <div class="expense-details-modal" onclick="event.stopPropagation()">
+          <div class="expense-details-header">
+            <h3>📊 Détail des dépenses de ${displayName}</h3>
+            <button class="close-btn" onclick="closeExpenseDetails()">✕</button>
+          </div>
+          <div class="expense-details-content">
+            <div class="expense-summary">
+              <div class="summary-item">
+                <span class="summary-label">Total:</span>
+                <span class="summary-value">${formatMoney(total)}</span>
+              </div>
+              <div class="summary-item">
+                <span class="summary-label">Nombre de dépenses:</span>
+                <span class="summary-value">${userExpenses.length}</span>
+              </div>
+            </div>
+            
+            <div class="expense-breakdown">
+              <h4>Par Type</h4>
+              ${Object.entries(byType).map(([type, data]) => `
+                <div class="breakdown-item">
+                  <span class="breakdown-label">${type}</span>
+                  <span class="breakdown-value">${formatMoney(data.total)} (${data.count})</span>
+                </div>
+              `).join('')}
+            </div>
+            
+            <div class="expense-breakdown">
+              <h4>Par Bénéficiaire</h4>
+              ${Object.entries(byBeneficiary).map(([ben, data]) => `
+                <div class="breakdown-item">
+                  <span class="breakdown-label">${ben === 'Couple' ? '👫 Couple' : '🙋 Perso'}</span>
+                  <span class="breakdown-value">${formatMoney(data.total)} (${data.count})</span>
+                </div>
+              `).join('')}
+            </div>
+            
+            <div class="expense-list-section">
+              <h4>Liste des dépenses</h4>
+              <div class="expense-details-list">
+                ${userExpenses.map(e => `
+                  <div class="expense-detail-item">
+                    <div class="expense-detail-info">
+                      <span class="expense-detail-store">${e.store}</span>
+                      <span class="expense-detail-date">${formatDate(e.date)}</span>
+                    </div>
+                    <div class="expense-detail-meta">
+                      <span class="expense-detail-type">${e.type}</span>
+                      <span class="expense-detail-beneficiary">${e.beneficiary}</span>
+                    </div>
+                    <div class="expense-detail-amount">${formatMoney(e.amount)}</div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Ajouter au DOM
+    document.body.insertAdjacentHTML('beforeend', html);
+    
+  } catch (error) {
+    console.error('Erreur chargement détails:', error);
+    alert('Erreur lors du chargement des détails');
+  }
+}
+
+function closeExpenseDetails() {
+  const overlay = document.querySelector('.expense-details-overlay');
+  if (overlay) {
+    overlay.remove();
+  }
 }
 
 function updateBeneficiaryChart(data) {

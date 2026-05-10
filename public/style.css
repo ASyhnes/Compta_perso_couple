@@ -801,3 +801,244 @@ body.dark-theme .expense-type {
 .view.active {
   animation: fadeIn 0.3s ease;
 }
+
+/* ======================================
+   MODAL DÉTAIL DÉPENSES PAR UTILISATEUR
+   ====================================== */
+.expense-details-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: var(--spacing);
+  animation: fadeIn 0.2s ease;
+}
+
+.expense-details-modal {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.expense-details-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.expense-details-header h3 {
+  font-size: 1.25rem;
+  color: var(--text);
+  margin: 0;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text-light);
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.close-btn:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.expense-details-content {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.expense-summary {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: white;
+  padding: 1.25rem;
+  border-radius: var(--radius);
+  margin-bottom: 1.5rem;
+  display: flex;
+  gap: 2rem;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.summary-label {
+  font-size: 0.875rem;
+  opacity: 0.9;
+}
+
+.summary-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.expense-breakdown {
+  background: var(--bg);
+  padding: 1rem;
+  border-radius: var(--radius);
+  margin-bottom: 1rem;
+}
+
+.expense-breakdown h4 {
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  color: var(--text-light);
+  margin: 0 0 0.75rem 0;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.breakdown-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.breakdown-item:last-child {
+  border-bottom: none;
+}
+
+.breakdown-label {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.breakdown-value {
+  color: var(--text-light);
+  font-weight: 600;
+}
+
+.expense-list-section {
+  margin-top: 1.5rem;
+}
+
+.expense-list-section h4 {
+  font-size: 1rem;
+  color: var(--text);
+  margin: 0 0 1rem 0;
+  font-weight: 600;
+}
+
+.expense-details-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.expense-detail-item {
+  background: var(--bg);
+  padding: 1rem;
+  border-radius: 8px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.75rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.expense-detail-item:hover {
+  transform: translateX(4px);
+  box-shadow: var(--shadow);
+}
+
+.expense-detail-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.expense-detail-store {
+  font-weight: 600;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.expense-detail-date {
+  font-size: 0.875rem;
+  color: var(--text-light);
+}
+
+.expense-detail-meta {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.expense-detail-type {
+  background: var(--primary);
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+}
+
+.expense-detail-beneficiary {
+  background: var(--secondary);
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+}
+
+.expense-detail-amount {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .expense-details-modal {
+    max-height: 95vh;
+  }
+  
+  .expense-summary {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .expense-detail-item {
+    grid-template-columns: 1fr;
+  }
+  
+  .expense-detail-amount {
+    justify-content: flex-start;
+    margin-top: 0.5rem;
+  }
+}
