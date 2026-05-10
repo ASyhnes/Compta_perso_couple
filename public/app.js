@@ -172,9 +172,23 @@ async function loadDashboard() {
     // Mettre à jour l'affichage
     latestStats = stats;
     updateSalariesInfo(salaries);
-    updateCharts(stats);
+
+    // Si la période est 'month' et qu'aucune donnée par utilisateur n'est renvoyée,
+    // récupérer les stats globales (sans filtre month) en fallback pour alimenter les graphiques.
+    let statsForCharts = stats;
+    if (currentPeriod === 'month' && Array.isArray(stats.totalByUser) && stats.totalByUser.length === 0) {
+      try {
+        const globalStats = await fetch('/api/stats', { credentials: 'same-origin' }).then(r => r.json());
+        statsForCharts = globalStats;
+        console.info('Aucun résultat mensuel — utilisation des statistiques globales pour les graphiques.');
+      } catch (err) {
+        console.warn('Impossible de récupérer les stats globales en fallback:', err);
+      }
+    }
+
+    updateCharts(statsForCharts);
     updateExpensesList(expenses);
-    updateBalanceDisplay(stats, salaries);
+    updateBalanceDisplay(statsForCharts, salaries);
   } catch (error) {
     console.error('Erreur chargement dashboard:', error);
   }
