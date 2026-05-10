@@ -129,6 +129,26 @@ class JsonDatabase {
   }
 
   executeRun(query, params) {
+    // UPDATE expenses
+    if (query.includes('UPDATE expenses')) {
+      const [amount, date, store, type, beneficiary, account, id] = params;
+      const index = this.data.expenses.findIndex(e => e.id === parseInt(id));
+      if (index !== -1) {
+        this.data.expenses[index] = {
+          ...this.data.expenses[index],
+          amount: amount,
+          date: date,
+          store: store,
+          type: type,
+          beneficiary: beneficiary,
+          account: account || 'commun'
+        };
+        this.save();
+        return { changes: 1 };
+      }
+      return { changes: 0 };
+    }
+
     // INSERT INTO salaries
     if (query.includes('INSERT INTO salaries')) {
       const [userId, month, amount] = params;
@@ -202,6 +222,33 @@ class JsonDatabase {
       return { lastInsertRowid: newCharge.id };
     }
 
+    // INSERT INTO users
+    if (query.includes('INSERT INTO users')) {
+      const [username, password, display_name] = params;
+      const newUser = {
+        id: this.nextId(this.data.users),
+        username: username,
+        password: password,
+        display_name: display_name || username,
+        created_at: new Date().toISOString()
+      };
+      this.data.users.push(newUser);
+      this.save();
+      return { lastInsertRowid: newUser.id };
+    }
+
+    // UPDATE users
+    if (query.includes('UPDATE users SET display_name')) {
+      const [display_name, id] = params;
+      const index = this.data.users.findIndex(u => u.id === parseInt(id));
+      if (index !== -1) {
+        this.data.users[index].display_name = display_name;
+        this.save();
+        return { changes: 1 };
+      }
+      return { changes: 0 };
+    }
+
     // DELETE FROM expenses
     if (query.includes('DELETE FROM expenses WHERE id')) {
       const id = params[0];
@@ -256,7 +303,7 @@ class JsonDatabase {
     }
 
     // SELECT expenses with filters
-    if (query.includes('SELECT e.*, u.username, u.display_name')) {
+    if (query.includes('SELECT e.*, u.username, u.display_name') && query.includes('FROM expenses')) {
       let expenses = [...this.data.expenses];
 
       // Filter by month if specified
@@ -319,6 +366,99 @@ class JsonDatabase {
       }).sort((a, b) => new Date(b.date) - new Date(a.date));
     }
 
+    // Stats - Virements by user (for /api/stats)
+    if (query.includes('SELECT v.user_id') && query.includes('SUM(v.amount)') && query.includes('virements_compte_commun')) {
+      let virements = [...this.data.virements_compte_commun];
+      
+      // Apply date filters
+      if (params.length > 0 && params[0]) {
+        const filterValue = params[0];
+        if (filterValue.includes('-') && filterValue.length === 7) {
+          virements = virements.filter(v => v.date && v.date.startsWith(filterValue));
+        } else if (params.length === 2) {
+          const [startDate, endDate] = params;
+          virements = virements.filter(v => v.date >= startDate && v.date <= endDate);
+        }
+      }
+
+      const grouped = {};
+      virements.forEach(v => {
+        if (!grouped[v.user_id]) grouped[v.user_id] = 0;
+        grouped[v.user_id] += parseFloat(v.amount || 0);
+      });
+
+      return Object.keys(grouped).map(user_id => ({
+        user_id: parseInt(user_id),
+        virements: grouped[user_id]
+      }));
+    }
+
+    // Stats - Charges loyer/garage by user (for /api/stats)
+    if (query.includes('SELECT c.user_id') && query.includes('SUM(c.amount)') && query.includes('charges_hors_compte')) {
+      let charges = [...this.data.charges_hors_compte];
+      
+      // Apply date filters
+      if (params.length > 0 && params[0]) {
+        const filterValue = params[0];
+        if (filterValue.includes('-') && filterValue.length === 7) {
+          charges = charges.filter(c => c.date && c.date.startsWith(filterValue));
+        } else if (params.length === 2) {
+          const [startDate, endDate] = params;
+          charges = charges.filter(c => c.date >= startDate && c.date <= endDate);
+        }
+      }
+
+      // Filter by category
+      if (query.includes("c.category IN ('loyer','loyer_garage')")) {
+        charges = charges.filter(c => c.category === 'loyer' || c.category === 'loyer_garage');
+      }
+
+      const grouped = {};
+      charges.forEach(c => {
+        if (!grouped[c.user_id]) grouped[c.user_id] = 0;
+        grouped[c.user_id] += parseFloat(c.amount || 0);
+      });
+
+      return Object.keys(grouped).map(user_id => ({
+        user_id: parseInt(user_id),
+        charges_loyer: grouped[user_id]
+      }));
+    }
+
+    // Stats - Shared/Personal expenses by user (for /api/stats)
+    if (query.includes('FROM expenses e') && query.includes("e.account = 'commun'") && query.includes('GROUP BY e.user_id')) {
+      let expenses = [...this.data.expenses].filter(e => (e.account || 'commun') === 'commun');
+      
+      // Apply date filters
+      if (params.length > 0 && params[0]) {
+        const filterValue = params[0];
+        if (filterValue.includes('-') && filterValue.length === 7) {
+          expenses = expenses.filter(e => e.date && e.date.startsWith(filterValue));
+        } else if (params.length === 2) {
+          const [startDate, endDate] = params;
+          expenses = expenses.filter(e => e.date >= startDate && e.date <= endDate);
+        }
+      }
+
+      // Check if filtering for personal expenses
+      const isPersonal = query.includes("e.beneficiary = 'Perso'");
+      if (isPersonal) {
+        expenses = expenses.filter(e => e.beneficiary === 'Perso');
+      }
+
+      const grouped = {};
+      expenses.forEach(e => {
+        if (!grouped[e.user_id]) grouped[e.user_id] = 0;
+        grouped[e.user_id] += parseFloat(e.amount || 0);
+      });
+
+      const fieldName = isPersonal ? 'personal_spent' : 'shared_spent';
+      return Object.keys(grouped).map(user_id => ({
+        user_id: parseInt(user_id),
+        [fieldName]: grouped[user_id]
+      }));
+    }
+
     // Stats - Total by user
     if (query.includes('SELECT') && query.includes('SUM(e.amount) as total') && query.includes('GROUP BY u.id')) {
       let expenses = [...this.data.expenses];
@@ -362,7 +502,7 @@ class JsonDatabase {
     }
 
     // Stats - Total by beneficiary
-    if (query.includes('SELECT beneficiary, SUM(amount) as total')) {
+    if (query.includes('SELECT e.beneficiary, SUM(e.amount) as total')) {
       let expenses = [...this.data.expenses];
 
       if (params.length > 0 && params[0]) {
@@ -414,6 +554,15 @@ class JsonDatabase {
       });
 
       return result;
+    }
+
+    // SELECT users list
+    if (query.includes('SELECT id, username, display_name FROM users')) {
+      return this.data.users.map(u => ({
+        id: u.id,
+        username: u.username,
+        display_name: u.display_name
+      }));
     }
 
     return [];
