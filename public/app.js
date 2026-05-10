@@ -312,6 +312,13 @@ function calculateEqualityBalance(davidTotal, leoTotal, statusDiv) {
 // ========================================
 
 function updateCharts(stats) {
+  // Debug log: afficher stats reçues côté client
+  try {
+    console.log('DEBUG updateCharts - stats:', stats);
+    window.__compta_debug_stats = stats;
+  } catch (e) {
+    console.warn('DEBUG updateCharts logging failed', e);
+  }
   updateTypeChart(stats.totalByType);
   updateUserChart(stats.totalByUser);
   // Afficher les dépenses perso par utilisateur si disponibles
@@ -481,7 +488,14 @@ async function updateSalaryVsExpensesChart(stats) {
   }
 
   // Récupérer les salaires du mois actuel
-  const salaries = await fetch(`/api/salaries/${getCurrentMonth()}`, { credentials: 'same-origin' }).then(r => r.json());
+  let salaries = [];
+  try {
+    salaries = await fetch(`/api/salaries/${getCurrentMonth()}`, { credentials: 'same-origin' }).then(r => r.json());
+    console.log('DEBUG updateSalaryVsExpensesChart - salaries fetched:', salaries);
+    window.__compta_debug_salaries = salaries;
+  } catch (e) {
+    console.warn('DEBUG fetch salaries failed', e);
+  }
   
   const users = stats.totalByUser.map(u => u.display_name || u.username);
   const salaryData = stats.totalByUser.map(u => (salaries.find(s => s.username === u.username)?.amount) || 0);
