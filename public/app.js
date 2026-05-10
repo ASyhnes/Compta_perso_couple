@@ -1336,23 +1336,29 @@ let analyticsMode = 'equity'; // 'equity' ou 'equality'
 
 async function loadAnalytics() {
   try {
+    console.log('📊 [loadAnalytics] Fetching /api/monthly-analytics...');
     const monthlyData = await fetch('/api/monthly-analytics', { credentials: 'same-origin' }).then(r => r.json());
+    console.log('📊 [loadAnalytics] Data received:', monthlyData);
     
     if (!monthlyData || monthlyData.length === 0) {
+      console.warn('⚠️ [loadAnalytics] No data - monthlyData is empty or null');
       document.getElementById('monthlyTable').innerHTML = '<p>Aucune donnée disponible</p>';
       return;
     }
 
+    console.log('📊 [loadAnalytics] Data OK, initializing charts...');
     // Initialiser le toggle du mode
     initAnalyticsModeToggle();
 
     // Créer les graphiques
+    console.log('📊 [loadAnalytics] Rendering charts...');
     updateMonthlyExpensesChart(monthlyData);
     updateCumulativeExpensesChart(monthlyData);
     updateRatioChart(monthlyData);
     updateMonthlyTable(monthlyData);
+    console.log('✅ [loadAnalytics] All charts rendered successfully!');
   } catch (error) {
-    console.error('Erreur chargement analytics:', error);
+    console.error('❌ [loadAnalytics] Erreur:', error);
   }
 }
 
