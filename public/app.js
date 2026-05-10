@@ -154,22 +154,26 @@ function initBalanceModeToggle() {
 
 async function loadDashboard() {
   try {
+    console.log('📊 [loadDashboard] Starting...');
     // Paramètres de période
     const params = new URLSearchParams();
     if (currentPeriod === 'month') {
       const now = new Date();
       const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       params.append('month', currentMonth);
+      console.log('📊 [loadDashboard] Monthly filter:', currentMonth);
     }
 
     // Charger les statistiques
+    console.log('📊 [loadDashboard] Fetching stats, expenses, salaries...');
     const [stats, expenses, salaries] = await Promise.all([
-      fetch(`/api/stats?${params}`, { credentials: 'same-origin' }).then(r => r.json()),
-      fetch(`/api/expenses?${params}`, { credentials: 'same-origin' }).then(r => r.json()),
-      fetch(`/api/salaries/${getCurrentMonth()}`, { credentials: 'same-origin' }).then(r => r.json())
+      fetch(`/api/stats?${params}`, { credentials: 'same-origin' }).then(r => r.json()).then(d => { console.log('✅ /api/stats returned:', d); return d; }),
+      fetch(`/api/expenses?${params}`, { credentials: 'same-origin' }).then(r => r.json()).then(d => { console.log('✅ /api/expenses returned:', d); return d; }),
+      fetch(`/api/salaries/${getCurrentMonth()}`, { credentials: 'same-origin' }).then(r => r.json()).then(d => { console.log('✅ /api/salaries returned:', d); return d; })
     ]);
 
     // Mettre à jour l'affichage
+    console.log('📊 [loadDashboard] Updating display with stats...');
     latestStats = stats;
     updateSalariesInfo(salaries);
 
@@ -177,20 +181,25 @@ async function loadDashboard() {
     // récupérer les stats globales (sans filtre month) en fallback pour alimenter les graphiques.
     let statsForCharts = stats;
     if (currentPeriod === 'month' && Array.isArray(stats.totalByUser) && stats.totalByUser.length === 0) {
+      console.info('📊 [loadDashboard] Monthly stats empty, fetching global fallback...');
       try {
         const globalStats = await fetch('/api/stats', { credentials: 'same-origin' }).then(r => r.json());
         statsForCharts = globalStats;
-        console.info('Aucun résultat mensuel — utilisation des statistiques globales pour les graphiques.');
+        console.info('✅ Using global stats fallback for charts.');
       } catch (err) {
-        console.warn('Impossible de récupérer les stats globales en fallback:', err);
+        console.warn('❌ Impossible de récupérer les stats globales en fallback:', err);
       }
     }
 
+    console.log('📊 [loadDashboard] Calling updateCharts with statsForCharts:', statsForCharts);
     updateCharts(statsForCharts);
+    console.log('📊 [loadDashboard] Calling updateExpensesList...');
     updateExpensesList(expenses);
+    console.log('📊 [loadDashboard] Calling updateBalanceDisplay...');
     updateBalanceDisplay(statsForCharts, salaries);
+    console.log('✅ [loadDashboard] Completed successfully!');
   } catch (error) {
-    console.error('Erreur chargement dashboard:', error);
+    console.error('❌ [loadDashboard] Error:', error);
   }
 }
 
@@ -328,19 +337,35 @@ function calculateEqualityBalance(davidTotal, leoTotal, statusDiv) {
 function updateCharts(stats) {
   // Debug log: afficher stats reçues côté client
   try {
-    console.log('DEBUG updateCharts - stats:', stats);
+    console.log('📊 [updateCharts] Received stats:', stats);
     window.__compta_debug_stats = stats;
   } catch (e) {
-    console.warn('DEBUG updateCharts logging failed', e);
+    console.warn('❌ [updateCharts] logging failed', e);
   }
-  updateTypeChart(stats.totalByType);
-  updateUserChart(stats.totalByUser);
+
+  // Validate stats object
+  if (!stats) {
+    console.error('❌ [updateCharts] stats is null/undefined!');
+    return;
+  }
+
+  console.log('📊 [updateCharts] Updating typeChart with:', stats.totalByType);
+  updateTypeChart(stats.totalByType || []);
+  console.log('📊 [updateCharts] Updating userChart with:', stats.totalByUser);
+  updateUserChart(stats.totalByUser || []);
+  
   // Afficher les dépenses perso par utilisateur si disponibles
-  if (stats.personalByUser) {
+  if (stats.personalByUser && Array.isArray(stats.personalByUser) && stats.personalByUser.length > 0) {
+    console.log('📊 [updateCharts] Updating beneficiaryChart with personalByUser...');
     updateBeneficiaryChart(stats.personalByUser);
-  } else {
+  } else if (stats.totalByBeneficiary && Array.isArray(stats.totalByBeneficiary)) {
+    console.log('📊 [updateCharts] Updating beneficiaryChart with totalByBeneficiary...');
     updateBeneficiaryChart(stats.totalByBeneficiary);
+  } else {
+    console.warn('⚠️  [updateCharts] No beneficiary data available');
   }
+  
+  console.log('📊 [updateCharts] Updating salaryVsExpensesChart...');
   updateSalaryVsExpensesChart(stats);
 }
 
@@ -349,6 +374,12 @@ function updateTypeChart(data) {
   
   if (charts.typeChart) {
     charts.typeChart.destroy();
+  }
+
+  // Guard: ensure data is a non-empty array
+  if (!Array.isArray(data) || data.length === 0) {
+    console.warn('⚠️  [updateTypeChart] data is not an array or is empty:', data);
+    return;
   }
 
   const typeIcons = {
@@ -360,7 +391,8 @@ function updateTypeChart(data) {
   };
 
   const labels = data.map(d => `${typeIcons[d.type] || '📦'} ${d.type}`);
-  const values = data.map(d => d.total || 0);
+  const values = data.map(d => Number(d.total) || 0);
+  console.log('📊 [updateTypeChart] labels:', labels, 'values:', values);
 
   charts.typeChart = new Chart(ctx, {
     type: 'pie',
@@ -405,8 +437,16 @@ function updateUserChart(data) {
     charts.userChart.destroy();
   }
 
-  const labels = data.map(d => d.display_name);
-  const values = data.map(d => d.total || 0);
+  // Guard: ensure data is a non-empty array
+  if (!Array.isArray(data) || data.length === 0) {
+    console.warn('⚠️  [updateUserChart] data is not an array or is empty:', data);
+    return;
+  }
+
+  console.log('📊 [updateUserChart] Processing data:', data);
+  const labels = data.map(d => d.display_name || d.username || 'Unknown');
+  const values = data.map(d => Number(d.total) || 0);
+  console.log('📊 [updateUserChart] labels:', labels, 'values:', values);
 
   charts.userChart = new Chart(ctx, {
     type: 'bar',
@@ -452,17 +492,30 @@ function updateBeneficiaryChart(data) {
     charts.beneficiaryChart.destroy();
   }
 
+  // Guard: ensure data is a non-empty array
+  if (!Array.isArray(data) || data.length === 0) {
+    console.warn('⚠️  [updateBeneficiaryChart] data is not an array or is empty:', data);
+    return;
+  }
+
   let labels = [];
   let values = [];
 
   if (data.length > 0 && data[0].personal !== undefined) {
     // personalByUser format
+    console.log('📊 [updateBeneficiaryChart] Using personalByUser format');
     labels = data.map(d => d.display_name || d.username);
-    values = data.map(d => d.personal || 0);
+    values = data.map(d => Number(d.personal) || 0);
   } else if (data.length > 0 && data[0].beneficiary !== undefined) {
+    // totalByBeneficiary format
+    console.log('📊 [updateBeneficiaryChart] Using totalByBeneficiary format');
     labels = data.map(d => d.beneficiary === 'Couple' ? '👫 Couple' : '🙋 Perso');
-    values = data.map(d => d.total || 0);
+    values = data.map(d => Number(d.total) || 0);
+  } else {
+    console.warn('⚠️  [updateBeneficiaryChart] Unknown data format:', data);
+    return;
   }
+  console.log('📊 [updateBeneficiaryChart] labels:', labels, 'values:', values);
 
   charts.beneficiaryChart = new Chart(ctx, {
     type: 'doughnut',
@@ -501,19 +554,26 @@ async function updateSalaryVsExpensesChart(stats) {
     charts.salaryVsExpensesChart.destroy();
   }
 
+  // Guard: ensure stats.totalByUser exists and is an array
+  if (!stats || !Array.isArray(stats.totalByUser) || stats.totalByUser.length === 0) {
+    console.warn('⚠️  [updateSalaryVsExpensesChart] stats.totalByUser is invalid:', stats?.totalByUser);
+    return;
+  }
+
   // Récupérer les salaires du mois actuel
   let salaries = [];
   try {
     salaries = await fetch(`/api/salaries/${getCurrentMonth()}`, { credentials: 'same-origin' }).then(r => r.json());
-    console.log('DEBUG updateSalaryVsExpensesChart - salaries fetched:', salaries);
+    console.log('📊 [updateSalaryVsExpensesChart] salaries fetched:', salaries);
     window.__compta_debug_salaries = salaries;
   } catch (e) {
-    console.warn('DEBUG fetch salaries failed', e);
+    console.warn('⚠️  [updateSalaryVsExpensesChart] fetch salaries failed:', e);
   }
   
   const users = stats.totalByUser.map(u => u.display_name || u.username);
-  const salaryData = stats.totalByUser.map(u => (salaries.find(s => s.username === u.username)?.amount) || 0);
-  const expenseData = stats.totalByUser.map(u => u.total || 0);
+  const salaryData = stats.totalByUser.map(u => Number((salaries.find(s => s.username === u.username)?.amount) || 0));
+  const expenseData = stats.totalByUser.map(u => Number(u.total) || 0);
+  console.log('📊 [updateSalaryVsExpensesChart] users:', users, 'salaryData:', salaryData, 'expenseData:', expenseData);
 
   charts.salaryVsExpensesChart = new Chart(ctx, {
     type: 'bar',
