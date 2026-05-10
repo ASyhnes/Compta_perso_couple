@@ -346,13 +346,17 @@
       <!-- Graphique Évolution des dépenses par personne -->
       <div class="card">
         <h3>📈 Évolution des Dépenses par Personne (Mois par Mois)</h3>
-        <canvas id="monthlyExpensesChart"></canvas>
+        <div class="chart-container">
+          <canvas id="monthlyExpensesChart"></canvas>
+        </div>
       </div>
 
       <!-- Graphique Dépenses cumulées -->
       <div class="card">
         <h3>📊 Dépenses Cumulées</h3>
-        <canvas id="cumulativeExpensesChart"></canvas>
+        <div class="chart-container">
+          <canvas id="cumulativeExpensesChart"></canvas>
+        </div>
       </div>
 
       <!-- Graphique Ratio d'équité/égalité -->
@@ -367,7 +371,9 @@
             Mode Équitabilité : Ratio au prorata du salaire
           </p>
         </div>
-        <canvas id="ratioChart"></canvas>
+        <div class="chart-container">
+          <canvas id="ratioChart"></canvas>
+        </div>
       </div>
 
       <!-- Tableau récapitulatif par mois -->
