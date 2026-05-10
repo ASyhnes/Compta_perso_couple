@@ -9,7 +9,9 @@ class JsonDatabase {
     this.data = {
       users: [],
       salaries: [],
-      expenses: []
+      expenses: [],
+      virements_compte_commun: [],
+      charges_hors_compte: []
     };
     this.load();
   }
@@ -26,9 +28,11 @@ class JsonDatabase {
       try {
         const fileContent = fs.readFileSync(this.dbPath, 'utf8');
         this.data = JSON.parse(fileContent);
+        this.normalizeData();
       } catch (error) {
         console.error('Erreur chargement DB:', error);
-        this.save(); // Créer un fichier vide
+        this.initializeDefaultUsers();
+        this.save();
       }
     } else {
       // Initialiser avec les utilisateurs par défaut
@@ -43,6 +47,24 @@ class JsonDatabase {
     } catch (error) {
       console.error('Erreur sauvegarde DB:', error);
     }
+  }
+
+  normalizeData() {
+    this.data = {
+      users: Array.isArray(this.data.users) ? this.data.users : [],
+      salaries: Array.isArray(this.data.salaries) ? this.data.salaries : [],
+      expenses: Array.isArray(this.data.expenses) ? this.data.expenses : [],
+      virements_compte_commun: Array.isArray(this.data.virements_compte_commun) ? this.data.virements_compte_commun : [],
+      charges_hors_compte: Array.isArray(this.data.charges_hors_compte) ? this.data.charges_hors_compte : []
+    };
+
+    if (this.data.users.length === 0) {
+      this.initializeDefaultUsers();
+    }
+  }
+
+  nextId(collection) {
+    return collection.length === 0 ? 1 : Math.max(...collection.map(item => item.id || 0)) + 1;
   }
 
   initializeDefaultUsers() {
@@ -91,6 +113,18 @@ class JsonDatabase {
       return this.data.expenses.find(e => e.id === parseInt(id));
     }
 
+    // SELECT virement WHERE id = ?
+    if (query.includes('SELECT user_id FROM virements_compte_commun WHERE id')) {
+      const id = params[0];
+      return this.data.virements_compte_commun.find(v => v.id === parseInt(id));
+    }
+
+    // SELECT charge WHERE id = ?
+    if (query.includes('SELECT user_id FROM charges_hors_compte WHERE id')) {
+      const id = params[0];
+      return this.data.charges_hors_compte.find(c => c.id === parseInt(id));
+    }
+
     return null;
   }
 
@@ -121,18 +155,51 @@ class JsonDatabase {
     if (query.includes('INSERT INTO expenses')) {
       const [userId, amount, date, store, type, beneficiary] = params;
       const newExpense = {
-        id: this.data.expenses.length + 1,
+        id: this.nextId(this.data.expenses),
         user_id: userId,
         amount: amount,
         date: date,
         store: store,
         type: type,
         beneficiary: beneficiary,
+        account: params.length > 6 ? params[6] : 'commun',
         created_at: new Date().toISOString()
       };
       this.data.expenses.push(newExpense);
       this.save();
       return { lastInsertRowid: newExpense.id };
+    }
+
+    // INSERT INTO virements_compte_commun
+    if (query.includes('INSERT INTO virements_compte_commun')) {
+      const [userId, amount, date] = params;
+      const newVirement = {
+        id: this.nextId(this.data.virements_compte_commun),
+        user_id: userId,
+        amount: amount,
+        date: date,
+        created_at: new Date().toISOString()
+      };
+      this.data.virements_compte_commun.push(newVirement);
+      this.save();
+      return { lastInsertRowid: newVirement.id };
+    }
+
+    // INSERT INTO charges_hors_compte
+    if (query.includes('INSERT INTO charges_hors_compte')) {
+      const [userId, amount, date, category, description] = params;
+      const newCharge = {
+        id: this.nextId(this.data.charges_hors_compte),
+        user_id: userId,
+        amount: amount,
+        date: date,
+        category: category,
+        description: description || null,
+        created_at: new Date().toISOString()
+      };
+      this.data.charges_hors_compte.push(newCharge);
+      this.save();
+      return { lastInsertRowid: newCharge.id };
     }
 
     // DELETE FROM expenses
@@ -141,6 +208,28 @@ class JsonDatabase {
       const index = this.data.expenses.findIndex(e => e.id === parseInt(id));
       if (index !== -1) {
         this.data.expenses.splice(index, 1);
+        this.save();
+      }
+      return { changes: 1 };
+    }
+
+    // DELETE FROM virements_compte_commun
+    if (query.includes('DELETE FROM virements_compte_commun WHERE id')) {
+      const id = params[0];
+      const index = this.data.virements_compte_commun.findIndex(v => v.id === parseInt(id));
+      if (index !== -1) {
+        this.data.virements_compte_commun.splice(index, 1);
+        this.save();
+      }
+      return { changes: 1 };
+    }
+
+    // DELETE FROM charges_hors_compte
+    if (query.includes('DELETE FROM charges_hors_compte WHERE id')) {
+      const id = params[0];
+      const index = this.data.charges_hors_compte.findIndex(c => c.id === parseInt(id));
+      if (index !== -1) {
+        this.data.charges_hors_compte.splice(index, 1);
         this.save();
       }
       return { changes: 1 };
@@ -181,6 +270,49 @@ class JsonDatabase {
         const user = this.data.users.find(u => u.id === expense.user_id);
         return {
           ...expense,
+          username: user ? user.username : '',
+          display_name: user ? user.display_name : ''
+        };
+      }).sort((a, b) => new Date(b.date) - new Date(a.date));
+    }
+
+    // SELECT virements with filters
+    if (query.includes('SELECT v.*, u.username, u.display_name')) {
+      let virements = [...this.data.virements_compte_commun];
+
+      if (params.length > 0 && params[0]) {
+        const month = params[0];
+        virements = virements.filter(v => v.date.startsWith(month));
+      }
+
+      return virements.map(virement => {
+        const user = this.data.users.find(u => u.id === virement.user_id);
+        return {
+          ...virement,
+          username: user ? user.username : '',
+          display_name: user ? user.display_name : ''
+        };
+      }).sort((a, b) => new Date(b.date) - new Date(a.date));
+    }
+
+    // SELECT charges with filters
+    if (query.includes('SELECT c.*, u.username, u.display_name')) {
+      let charges = [...this.data.charges_hors_compte];
+
+      if (params.length > 0 && params[0]) {
+        const month = params[0];
+        charges = charges.filter(c => c.date.startsWith(month));
+      }
+
+      if (query.includes('c.category = ?')) {
+        const categoryParam = params[params.length - 1];
+        charges = charges.filter(c => c.category === categoryParam);
+      }
+
+      return charges.map(charge => {
+        const user = this.data.users.find(u => u.id === charge.user_id);
+        return {
+          ...charge,
           username: user ? user.username : '',
           display_name: user ? user.display_name : ''
         };
