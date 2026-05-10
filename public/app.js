@@ -498,15 +498,17 @@ function updateUserChart(data) {
 
 async function showUserExpenseDetails(username, displayName) {
   try {
-    // Récupérer les paramètres de période actuels
+    // Récupérer les paramètres de période actuels (MÊME filtre que le graphique)
     const params = new URLSearchParams();
+    let periodLabel = 'Total';
     if (currentPeriod === 'month') {
       const now = new Date();
       const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       params.append('month', currentMonth);
+      periodLabel = `Mois en cours (${new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })})`;
     }
 
-    // Récupérer toutes les dépenses
+    // Récupérer toutes les dépenses avec le MÊME filtre que le graphique
     const expenses = await fetch(`/api/expenses?${params}`, { credentials: 'same-origin' }).then(r => r.json());
     
     // Filtrer pour l'utilisateur sélectionné
