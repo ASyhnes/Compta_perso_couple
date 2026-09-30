@@ -88,7 +88,7 @@ export default function Dashboard() {
           <div className="flex justify-center items-center h-48 text-gray-400">Chargement...</div>
         ) : (
           <>
-            {(activeTab === 'dashboard' || activeTab === 'global') && (
+            {activeTab === 'dashboard' && (
               <div className="space-y-6">
                 
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
@@ -129,6 +129,57 @@ export default function Dashboard() {
               </div>
             )}
 
+            {activeTab === 'global' && (
+              <div className="space-y-6">
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                  <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Salaires du Mois</h2>
+                  <div className="flex justify-between items-center text-sm mb-2">
+                    <span className="text-gray-600">David</span>
+                    <span className="font-medium">{data.monthData?.salaryDavid || 1800} €</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-600">Léo</span>
+                    <span className="font-medium">{data.monthData?.salaryLeo || 1426} €</span>
+                  </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                  <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Charges Fixes</h2>
+                  {data.fixedExpenses?.length > 0 ? (
+                    <div className="space-y-3">
+                      {data.fixedExpenses.map(exp => (
+                        <div key={exp.id} className="flex justify-between items-center text-sm border-b border-gray-50 pb-2 last:border-0 last:pb-0">
+                          <span className="text-gray-600">{exp.name}</span>
+                          <span className="font-medium text-gray-800">{exp.amount} €</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-400 text-sm italic">Aucune charge fixe.</p>
+                  )}
+                </div>
+
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                  <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Historique Complet</h2>
+                  {data.sharedExpenses?.length > 0 ? (
+                    <div className="space-y-3">
+                      {data.sharedExpenses.map(exp => (
+                        <div key={exp.id} className="flex justify-between items-center text-sm border-b border-gray-50 pb-2 last:border-0 last:pb-0">
+                          <div>
+                            <p className="font-medium text-gray-800">{exp.description}</p>
+                            <p className="text-xs text-gray-400">{new Date(exp.date).toLocaleDateString('fr-FR')} • {exp.payer?.username}</p>
+                          </div>
+                          <span className="font-medium text-blue-600">{exp.amount} €</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-400 text-sm italic">Aucune dépense ponctuelle.</p>
+                  )}
+                </div>
+              </div>
+            )}
+
             {activeTab === 'tricount' && (
               <div className="space-y-4">
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-blue-100">
@@ -151,11 +202,11 @@ export default function Dashboard() {
                 </div>
 
                 <div className="space-y-2 mt-6">
-                  <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Historique Tricount</h2>
+                  <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Historique Récent</h2>
                   {data.sharedExpenses.length === 0 ? (
                     <p className="text-gray-400 text-sm italic">Aucune dépense partagée.</p>
                   ) : (
-                    data.sharedExpenses.map(exp => (
+                    data.sharedExpenses.slice(0, 5).map(exp => (
                       <div key={exp.id} className="bg-white p-3 rounded-lg shadow-sm border border-gray-50 flex justify-between items-center">
                         <div>
                           <p className="font-medium text-gray-800 text-sm">{exp.description}</p>

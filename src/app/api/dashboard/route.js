@@ -39,7 +39,9 @@ export async function GET(request) {
     return NextResponse.json({
       calculation,
       pieData: formattedPieData,
-      sharedExpenses
+      sharedExpenses,
+      fixedExpenses,
+      monthData
     });
   } catch (error) {
     console.error(error);
