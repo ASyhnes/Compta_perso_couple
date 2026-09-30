@@ -127,8 +127,12 @@ export default function Dashboard() {
 
   const groupedFixedExpenses = data.fixedExpenses ? data.fixedExpenses.reduce((acc, exp) => {
     const payer = exp.payer?.username || 'inconnu';
-    if (!acc[payer]) acc[payer] = { total: 0, items: [] };
-    acc[payer].items.push(exp);
+    const bank = exp.bankAccount || 'Compte Principal';
+    if (!acc[payer]) acc[payer] = { total: 0, banks: {} };
+    if (!acc[payer].banks[bank]) acc[payer].banks[bank] = { total: 0, items: [] };
+    
+    acc[payer].banks[bank].items.push(exp);
+    acc[payer].banks[bank].total += exp.amount;
     acc[payer].total += exp.amount;
     return acc;
   }, {}) : {};
@@ -216,11 +220,21 @@ export default function Dashboard() {
                             <span className="capitalize">{payer === 'commun' ? 'Compte Couple' : `Perso ${payer}`}</span>
                             <span className="text-blue-600">{groupedFixedExpenses[payer].total} €</span>
                           </div>
-                          <div className="space-y-2 px-2">
-                            {groupedFixedExpenses[payer].items.map(exp => (
-                              <div key={exp.id} className="flex justify-between items-center text-sm border-b border-gray-100 pb-1 last:border-0 last:pb-0">
-                                <span className="text-gray-600">{exp.name}</span>
-                                <span className="font-medium text-gray-800">{exp.amount} €</span>
+                          <div className="space-y-4 px-2">
+                            {Object.keys(groupedFixedExpenses[payer].banks).map(bankName => (
+                              <div key={bankName} className="mb-2">
+                                <h3 className="text-xs font-bold text-gray-400 uppercase border-b border-gray-100 pb-1 mb-2 flex justify-between">
+                                  {bankName}
+                                  <span className="text-gray-500">{groupedFixedExpenses[payer].banks[bankName].total} €</span>
+                                </h3>
+                                <div className="space-y-1">
+                                  {groupedFixedExpenses[payer].banks[bankName].items.map(exp => (
+                                    <div key={exp.id} className="flex justify-between items-center text-sm">
+                                      <span className="text-gray-600">{exp.name}</span>
+                                      <span className="font-medium text-gray-800">{exp.amount} €</span>
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
                             ))}
                           </div>

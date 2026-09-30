@@ -1,4 +1,4 @@
-const { PrismaClient } = require('@prisma/client')
+﻿const { PrismaClient } = require('@prisma/client')
 const prisma = new PrismaClient()
 
 async function main() {
@@ -29,17 +29,17 @@ async function main() {
 
   // 2. Create Fixed Expenses for David
   const davidExpenses = [
-    { name: 'Garage', amount: 80, distributionRule: 'PRO_RATA' },
-    { name: 'Box Bouygues', amount: 48, distributionRule: 'PRO_RATA' },
-    { name: 'Revolut Crédit', amount: 220, distributionRule: 'PERSONAL' },
-    { name: 'Espèces Amaury', amount: 150, distributionRule: 'PERSONAL' },
-    { name: 'Forfait Bouygues', amount: 60, distributionRule: 'PERSONAL' },
-    { name: 'Spotify', amount: 21, distributionRule: 'PERSONAL' },
-    { name: 'Mutuelle', amount: 15, distributionRule: 'PERSONAL' },
-    { name: 'Hostinger', amount: 11, distributionRule: 'PERSONAL' },
-    { name: 'Marge', amount: 50, distributionRule: 'PERSONAL' },
-    { name: 'Abonnement Google', amount: 100, distributionRule: 'PERSONAL' },
-    { name: 'Investissement', amount: 250, distributionRule: 'PERSONAL' },
+    { name: 'Garage', amount: 80, distributionRule: 'PRO_RATA', bankAccount: 'Compte Principal' },
+    { name: 'Box Bouygues', amount: 48, distributionRule: 'PRO_RATA', bankAccount: 'Compte Principal' },
+    { name: 'Revolut Crédit', amount: 220, distributionRule: 'PERSONAL', bankAccount: 'Revolut' },
+    { name: 'Espèces Amaury', amount: 150, distributionRule: 'PERSONAL', bankAccount: 'Revolut' },
+    { name: 'Forfait Bouygues', amount: 60, distributionRule: 'PERSONAL', bankAccount: 'Boursorama' },
+    { name: 'Spotify', amount: 21, distributionRule: 'PERSONAL', bankAccount: 'Boursorama' },
+    { name: 'Mutuelle', amount: 15, distributionRule: 'PERSONAL', bankAccount: 'Boursorama' },
+    { name: 'Hostinger', amount: 11, distributionRule: 'PERSONAL', bankAccount: 'Boursorama' },
+    { name: 'Marge', amount: 50, distributionRule: 'PERSONAL', bankAccount: 'Boursorama' },
+    { name: 'Abonnement Google', amount: 100, distributionRule: 'PERSONAL', bankAccount: 'Trade Republic' },
+    { name: 'Investissement', amount: 250, distributionRule: 'PERSONAL', bankAccount: 'Trade Republic' },
   ]
 
   for (const exp of davidExpenses) {
@@ -51,9 +51,9 @@ async function main() {
     })
   }
 
-  // 3. Create Fixed Expenses for Léo
+  // 3. Create Fixed Expenses for LÃ©o
   const leoExpenses = [
-    { name: 'Assurance auto', amount: 48, distributionRule: 'PRO_RATA' },
+    { name: 'Assurance auto', amount: 48, distributionRule: 'PRO_RATA', bankAccount: 'Compte Principal' },
   ]
 
   for (const exp of leoExpenses) {
@@ -78,9 +78,9 @@ async function main() {
   })
 
   const sharedCharges = [
-    { name: 'Nourriture & courses', amount: 450, distributionRule: 'TWO_THIRDS' },
-    { name: 'Loyer', amount: 750, distributionRule: 'PRO_RATA' },
-    { name: 'Essence', amount: 300, distributionRule: 'PRO_RATA' },
+    { name: 'Nourriture & courses', amount: 450, distributionRule: 'TWO_THIRDS', bankAccount: 'Compte Commun' },
+    { name: 'Loyer', amount: 750, distributionRule: 'PRO_RATA', bankAccount: 'Compte Commun' },
+    { name: 'Essence', amount: 300, distributionRule: 'PRO_RATA', bankAccount: 'Compte Commun' },
   ]
 
   for (const exp of sharedCharges) {
@@ -103,3 +103,6 @@ main()
   .finally(async () => {
     await prisma.$disconnect()
   })
+
+
+

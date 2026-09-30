@@ -32,6 +32,7 @@ model FixedExpense {
   payerId          String
   payer            User     @relation(fields: [payerId], references: [id])
   distributionRule String   // "PRO_RATA", "TWO_THIRDS", "FIFTY_FIFTY", "PERSONAL"
+  bankAccount      String?  // e.g., "Revolut", "Boursorama", "Trade Republic"
 }
 
 model SharedExpense {
