@@ -277,11 +277,11 @@ export default function Dashboard() {
                             </h4>
                             <div className="space-y-2 px-1">
                               {groupedResponsibility[person].banks[bankName].items.map((exp, i) => (
-                                <div key={i} className="flex justify-between items-center text-sm border-b border-gray-100 pb-1 last:border-0 last:pb-0">
-                                  <label className="flex items-center gap-2 cursor-pointer">
+                                <div key={i} className={`flex justify-between items-center text-sm border-b border-gray-100 pb-1 last:border-0 last:pb-0 transition-colors ${checkedItems[\`\${person}-\${bankName}-\${exp.name}\`] ? 'bg-green-50 p-1 rounded-md' : ''}`}>
+                                  <label className="flex items-center gap-2 cursor-pointer flex-1">
                                     <input 
                                       type="checkbox" 
-                                      className="rounded text-blue-600 focus:ring-blue-500"
+                                      className="rounded text-green-600 focus:ring-green-500"
                                       checked={checkedItems[`${person}-${bankName}-${exp.name}`] || false}
                                       onChange={(e) => {
                                         const newChecked = { ...checkedItems, [`${person}-${bankName}-${exp.name}`]: e.target.checked };
@@ -289,9 +289,9 @@ export default function Dashboard() {
                                         localStorage.setItem('compta_checked_items_' + new Date().toISOString().slice(0, 7), JSON.stringify(newChecked));
                                       }}
                                     />
-                                    <span className={checkedItems[`${person}-${bankName}-${exp.name}`] ? "text-gray-400 line-through" : "text-gray-600"}>{exp.name}</span>
+                                    <span className={checkedItems[`${person}-${bankName}-${exp.name}`] ? "text-green-700 font-medium" : "text-gray-600"}>{exp.name}</span>
                                   </label>
-                                  <span className={checkedItems[`${person}-${bankName}-${exp.name}`] ? "font-medium text-gray-400 line-through" : "font-medium text-gray-800"}>{Math.round(exp.amount)} €</span>
+                                  <span className={checkedItems[`${person}-${bankName}-${exp.name}`] ? "font-bold text-green-700" : "font-medium text-gray-800"}>{Math.round(exp.amount)} €</span>
                                 </div>
                               ))}
                             </div>
