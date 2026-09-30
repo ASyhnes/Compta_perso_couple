@@ -16,10 +16,20 @@ export default function Dashboard() {
   const [loginInput, setLoginInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [loginError, setLoginError] = useState('');
+  
+  // Checklist pour To-Do List
+  const [checkedItems, setCheckedItems] = useState({});
 
   useEffect(() => {
     const savedUser = localStorage.getItem('compta_user');
     if (savedUser) setCurrentUser(savedUser);
+    
+    // Charger les items cochés pour le mois en cours
+    const monthKey = 'compta_checked_items_' + new Date().toISOString().slice(0, 7);
+    const savedChecked = localStorage.getItem(monthKey);
+    if (savedChecked) {
+      try { setCheckedItems(JSON.parse(savedChecked)); } catch(e) {}
+    }
   }, []);
 
   const handleLogin = (e) => {
@@ -125,17 +135,55 @@ export default function Dashboard() {
     );
   }
 
-  const groupedFixedExpenses = data.fixedExpenses ? data.fixedExpenses.reduce((acc, exp) => {
-    const payer = exp.payer?.username || 'inconnu';
-    const bank = exp.bankAccount || 'Compte Principal';
-    if (!acc[payer]) acc[payer] = { total: 0, banks: {} };
-    if (!acc[payer].banks[bank]) acc[payer].banks[bank] = { total: 0, items: [] };
-    
-    acc[payer].banks[bank].items.push(exp);
-    acc[payer].banks[bank].total += exp.amount;
-    acc[payer].total += exp.amount;
-    return acc;
-  }, {}) : {};
+  const salaryDavid = data.monthData?.salaryDavid || 1800;
+  const salaryLeo = data.monthData?.salaryLeo || 1426;
+  const totalSalary = salaryDavid + salaryLeo;
+  const prorataDavid = totalSalary > 0 ? salaryDavid / totalSalary : 0.5;
+  const prorataLeo = totalSalary > 0 ? salaryLeo / totalSalary : 0.5;
+
+  const groupedResponsibility = {
+    david: { total: 0, banks: {} },
+    leo: { total: 0, banks: {} }
+  };
+
+  if (data.fixedExpenses) {
+    data.fixedExpenses.forEach(exp => {
+      let partDavid = 0;
+      let partLeo = 0;
+
+      if (exp.distributionRule === 'PRO_RATA') {
+        partDavid = exp.amount * prorataDavid;
+        partLeo = exp.amount * prorataLeo;
+      } else if (exp.distributionRule === 'TWO_THIRDS') {
+        partDavid = exp.amount * (2/3);
+        partLeo = exp.amount * (1/3);
+      } else if (exp.distributionRule === 'FIFTY_FIFTY') {
+        partDavid = exp.amount * 0.5;
+        partLeo = exp.amount * 0.5;
+      } else if (exp.distributionRule === 'PERSONAL') {
+        if (exp.payer?.username === 'david') partDavid = exp.amount;
+        if (exp.payer?.username === 'leo') partLeo = exp.amount;
+      }
+
+      const bank = exp.bankAccount || 'Compte Principal';
+
+      // Assign David's responsibility
+      if (partDavid > 0) {
+        if (!groupedResponsibility.david.banks[bank]) groupedResponsibility.david.banks[bank] = { total: 0, items: [] };
+        groupedResponsibility.david.banks[bank].items.push({ name: exp.distributionRule !== 'PERSONAL' ? "Part de " + exp.name : exp.name, amount: partDavid, isPaid: false });
+        groupedResponsibility.david.banks[bank].total += partDavid;
+        groupedResponsibility.david.total += partDavid;
+      }
+
+      // Assign Leo's responsibility
+      if (partLeo > 0) {
+        if (!groupedResponsibility.leo.banks[bank]) groupedResponsibility.leo.banks[bank] = { total: 0, items: [] };
+        groupedResponsibility.leo.banks[bank].items.push({ name: exp.distributionRule !== 'PERSONAL' ? "Part de " + exp.name : exp.name, amount: partLeo, isPaid: false });
+        groupedResponsibility.leo.banks[bank].total += partLeo;
+        groupedResponsibility.leo.total += partLeo;
+      }
+    });
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col pb-20">
@@ -211,39 +259,47 @@ export default function Dashboard() {
                 </div>
 
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                  <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Charges Fixes</h2>
-                  {Object.keys(groupedFixedExpenses).length > 0 ? (
-                    <div className="space-y-4">
-                      {Object.keys(groupedFixedExpenses).map(payer => (
-                        <div key={payer}>
-                          <div className="flex justify-between items-center bg-gray-50 p-2 rounded text-sm font-semibold text-gray-700 mb-2">
-                            <span className="capitalize">{payer === 'commun' ? 'Compte Couple' : `Perso ${payer}`}</span>
-                            <span className="text-blue-600">{groupedFixedExpenses[payer].total} €</span>
-                          </div>
-                          <div className="space-y-4 px-2">
-                            {Object.keys(groupedFixedExpenses[payer].banks).map(bankName => (
-                              <div key={bankName} className="mb-2">
-                                <h3 className="text-xs font-bold text-gray-400 uppercase border-b border-gray-100 pb-1 mb-2 flex justify-between">
-                                  {bankName}
-                                  <span className="text-gray-500">{groupedFixedExpenses[payer].banks[bankName].total} €</span>
-                                </h3>
-                                <div className="space-y-1">
-                                  {groupedFixedExpenses[payer].banks[bankName].items.map(exp => (
-                                    <div key={exp.id} className="flex justify-between items-center text-sm">
-                                      <span className="text-gray-600">{exp.name}</span>
-                                      <span className="font-medium text-gray-800">{exp.amount} €</span>
-                                    </div>
-                                  ))}
+                  <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">To-Do List : Financement (Ce mois-ci)</h2>
+                  
+                  {['david', 'leo'].map(person => (
+                    <div key={person} className="mb-6 last:mb-0">
+                      <div className="flex justify-between items-center mb-3 border-b-2 border-gray-200 pb-1">
+                        <h3 className="text-base font-bold text-gray-800 capitalize">{person}</h3>
+                        <span className="text-sm font-semibold text-blue-600">{Math.round(groupedResponsibility[person].total)} €</span>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        {Object.keys(groupedResponsibility[person].banks).map(bankName => (
+                          <div key={bankName} className="bg-gray-50 p-2 rounded-lg">
+                            <h4 className="text-xs font-bold text-gray-500 uppercase border-b border-gray-200 pb-1 mb-2 flex justify-between">
+                              A mettre sur {bankName}
+                              <span className="text-gray-600">{Math.round(groupedResponsibility[person].banks[bankName].total)} €</span>
+                            </h4>
+                            <div className="space-y-2 px-1">
+                              {groupedResponsibility[person].banks[bankName].items.map((exp, i) => (
+                                <div key={i} className="flex justify-between items-center text-sm border-b border-gray-100 pb-1 last:border-0 last:pb-0">
+                                  <label className="flex items-center gap-2 cursor-pointer">
+                                    <input 
+                                      type="checkbox" 
+                                      className="rounded text-blue-600 focus:ring-blue-500"
+                                      checked={checkedItems[`${person}-${bankName}-${exp.name}`] || false}
+                                      onChange={(e) => {
+                                        const newChecked = { ...checkedItems, [`${person}-${bankName}-${exp.name}`]: e.target.checked };
+                                        setCheckedItems(newChecked);
+                                        localStorage.setItem('compta_checked_items_' + new Date().toISOString().slice(0, 7), JSON.stringify(newChecked));
+                                      }}
+                                    />
+                                    <span className={checkedItems[`${person}-${bankName}-${exp.name}`] ? "text-gray-400 line-through" : "text-gray-600"}>{exp.name}</span>
+                                  </label>
+                                  <span className={checkedItems[`${person}-${bankName}-${exp.name}`] ? "font-medium text-gray-400 line-through" : "font-medium text-gray-800"}>{Math.round(exp.amount)} €</span>
                                 </div>
-                              </div>
-                            ))}
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  ) : (
-                    <p className="text-gray-400 text-sm italic">Aucune charge fixe.</p>
-                  )}
+                  ))}
                 </div>
 
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">

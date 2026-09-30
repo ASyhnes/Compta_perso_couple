@@ -4,105 +4,45 @@ const prisma = new PrismaClient()
 async function main() {
   console.log('Seeding initial data...')
   
-  // Clean DB
   await prisma.sharedExpense.deleteMany()
   await prisma.fixedExpense.deleteMany()
   await prisma.monthRecord.deleteMany()
   await prisma.user.deleteMany()
 
-  // 1. Create Users
   const david = await prisma.user.create({
-    data: {
-      username: 'david',
-      password: 'david_password', // to change in production
-      defaultSalary: 1800,
-    }
+    data: { username: 'david', password: 'david_password', defaultSalary: 1800 }
   })
 
   const leo = await prisma.user.create({
-    data: {
-      username: 'leo',
-      password: 'leo_password', // to change in production
-      defaultSalary: 1426, // SMIC Net
-    }
+    data: { username: 'leo', password: 'leo_password', defaultSalary: 1426 }
   })
 
-  // 2. Create Fixed Expenses for David
-  const davidExpenses = [
-    { name: 'Garage', amount: 80, distributionRule: 'PRO_RATA', bankAccount: 'Compte Principal' },
-    { name: 'Box Bouygues', amount: 48, distributionRule: 'PRO_RATA', bankAccount: 'Compte Principal' },
-    { name: 'Revolut Crédit', amount: 220, distributionRule: 'PERSONAL', bankAccount: 'Revolut' },
-    { name: 'Espèces Amaury', amount: 150, distributionRule: 'PERSONAL', bankAccount: 'Revolut' },
-    { name: 'Forfait Bouygues', amount: 60, distributionRule: 'PERSONAL', bankAccount: 'Boursorama' },
-    { name: 'Spotify', amount: 21, distributionRule: 'PERSONAL', bankAccount: 'Boursorama' },
-    { name: 'Mutuelle', amount: 15, distributionRule: 'PERSONAL', bankAccount: 'Boursorama' },
-    { name: 'Hostinger', amount: 11, distributionRule: 'PERSONAL', bankAccount: 'Boursorama' },
-    { name: 'Marge', amount: 50, distributionRule: 'PERSONAL', bankAccount: 'Boursorama' },
-    { name: 'Abonnement Google', amount: 100, distributionRule: 'PERSONAL', bankAccount: 'Trade Republic' },
-    { name: 'Investissement', amount: 250, distributionRule: 'PERSONAL', bankAccount: 'Trade Republic' },
-  ]
-
-  for (const exp of davidExpenses) {
-    await prisma.fixedExpense.create({
-      data: {
-        ...exp,
-        payerId: david.id,
-      }
-    })
-  }
-
-  // 3. Create Fixed Expenses for LÃ©o
-  const leoExpenses = [
-    { name: 'Assurance auto', amount: 48, distributionRule: 'PRO_RATA', bankAccount: 'Compte Principal' },
-  ]
-
-  for (const exp of leoExpenses) {
-    await prisma.fixedExpense.create({
-      data: {
-        ...exp,
-        payerId: leo.id,
-      }
-    })
-  }
-
-  // 4. Create Compte Commun Fixed Expenses (we assign a dummy user or assign to david/leo with a special rule)
-  // Since they are paid FROM the Compte Commun, they don't generate a "compensation" in the final transfer (just lower the shared pool).
-  // But wait, they are part of the target pool. The target pool is what needs to be funded.
-  // Actually we can assign them to a virtual "Commum" user or just distribute them.
   const communUser = await prisma.user.create({
-    data: {
-      username: 'commun',
-      password: 'n/a',
-      defaultSalary: 0,
-    }
+    data: { username: 'commun', password: 'n/a', defaultSalary: 0 }
   })
 
-  const sharedCharges = [
-    { name: 'Nourriture & courses', amount: 450, distributionRule: 'TWO_THIRDS', bankAccount: 'Compte Commun' },
-    { name: 'Loyer', amount: 750, distributionRule: 'PRO_RATA', bankAccount: 'Compte Commun' },
-    { name: 'Essence', amount: 300, distributionRule: 'PRO_RATA', bankAccount: 'Compte Commun' },
+  const expenses = [
+    { name: 'Essence', amount: 300, distributionRule: 'PRO_RATA', bankAccount: 'Boursorama', payerId: david.id },
+    { name: 'Forfait Bouygues Box', amount: 45, distributionRule: 'PRO_RATA', bankAccount: 'Boursorama', payerId: david.id },
+    { name: 'Part Amaury', amount: 150, distributionRule: 'PERSONAL', bankAccount: 'Boursorama', payerId: david.id },
+    { name: 'Forfait tel perso', amount: 60, distributionRule: 'PERSONAL', bankAccount: 'Boursorama', payerId: david.id },
+    { name: 'Spotify', amount: 21, distributionRule: 'PERSONAL', bankAccount: 'Boursorama', payerId: david.id },
+    { name: 'Hostinger', amount: 11, distributionRule: 'PERSONAL', bankAccount: 'Boursorama', payerId: david.id },
+    { name: 'Marge de sécurité', amount: 50, distributionRule: 'PERSONAL', bankAccount: 'Boursorama', payerId: david.id },
+    { name: 'Abonnement Google', amount: 100, distributionRule: 'PERSONAL', bankAccount: 'Trade Republic', payerId: david.id },
+    { name: 'Investissement', amount: 250, distributionRule: 'PERSONAL', bankAccount: 'Trade Republic', payerId: david.id },
+    { name: 'Crédit', amount: 220, distributionRule: 'PERSONAL', bankAccount: 'Revolut', payerId: david.id },
+    { name: 'Assurance perso', amount: 75, distributionRule: 'PERSONAL', bankAccount: 'Compte Perso', payerId: leo.id },
+    { name: 'Loyer', amount: 750, distributionRule: 'PRO_RATA', bankAccount: 'Compte Commun', payerId: communUser.id },
+    { name: 'Garage', amount: 80, distributionRule: 'PRO_RATA', bankAccount: 'Compte Commun', payerId: communUser.id },
+    { name: 'Nourriture & courses', amount: 450, distributionRule: 'TWO_THIRDS', bankAccount: 'Compte Commun', payerId: communUser.id },
   ]
 
-  for (const exp of sharedCharges) {
-    await prisma.fixedExpense.create({
-      data: {
-        ...exp,
-        payerId: communUser.id,
-      }
-    })
+  for (const exp of expenses) {
+    await prisma.fixedExpense.create({ data: exp })
   }
 
   console.log('Seed completed successfully!')
 }
 
-main()
-  .catch(e => {
-    console.error(e)
-    process.exit(1)
-  })
-  .finally(async () => {
-    await prisma.$disconnect()
-  })
-
-
-
+main().catch(e => { console.error(e); process.exit(1) }).finally(async () => { await prisma.() })
