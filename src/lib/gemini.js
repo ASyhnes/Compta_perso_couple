@@ -5,29 +5,36 @@ const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 export async function parseTricountExpense(text) {
   const prompt = `
-Tu es l'assistant financier d'un couple (David et Léo).
-Analyse la phrase suivante pour déterminer si l'utilisateur veut ajouter une dépense ponctuelle OU modifier/ajouter une charge fixe (abonnement, loyer, etc.).
+Tu es l'assistant financier d'un couple (David et Léo). L'utilisateur peut te donner plusieurs informations d'un coup (ex: payer une dépense, modifier le salaire d'un mois, modifier une charge fixe).
+Analyse la phrase et retourne un tableau d'actions.
 
 Phrase : "${text}"
 
 RÈGLES STRICTES :
-Réponds UNIQUEMENT avec un objet JSON pur (sans balises markdown, sans texte avant ou après).
+Réponds UNIQUEMENT avec un objet JSON pur contenant un tableau "actions", sans balises markdown.
 
-Format si c'est une dépense ponctuelle (courses, essence occasionnelle, sortie, etc) :
+Exemple de structure attendue :
 {
-  "action": "EXPENSE",
-  "amount": <nombre>,
-  "category": <"Nourriture/Hygiène/Maison" | "Transport" | "Bricolage" | "Animaux" | "Plaisir" | "Sortie">,
-  "payer": <"david" | "leo" | null>,
-  "description": <"court résumé">
+  "actions": [
+    {
+      "action": "EXPENSE",
+      "amount": 750,
+      "category": "Maison",
+      "payer": "david",
+      "description": "Deuxième loyer exceptionnel"
+    },
+    {
+      "action": "UPDATE_SALARY",
+      "target": "leo",
+      "amount": 1200
+    }
+  ]
 }
 
-Format si c'est une modification d'une charge fixe (ex: "Désormais le loyer est à 800", "Change le prix de la box à 50") :
-{
-  "action": "UPDATE_FIXED",
-  "targetName": <"Loyer" | "Box Bouygues" | "Assurance auto" | etc... essaie de deviner la cible existante>,
-  "newAmount": <nombre>
-}
+Actions possibles :
+1. "EXPENSE" : Dépense ponctuelle. Fournir "amount", "category" (Maison, Nourriture, Transport, Animaux, Plaisir, Sortie), "payer" ("david" ou "leo"), "description".
+2. "UPDATE_FIXED" : Modification d'une charge FIXE récurrente. Fournir "targetName" (ex: Loyer) et "newAmount".
+3. "UPDATE_SALARY" : Modification du salaire perçu par l'un d'eux ce mois-ci. Fournir "target" ("david" ou "leo") et "amount".
 `;
 
   try {
