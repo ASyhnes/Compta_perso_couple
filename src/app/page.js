@@ -11,6 +11,37 @@ export default function Dashboard() {
   const [data, setData] = useState({ calculation: null, pieData: [], sharedExpenses: [] });
   const [isLoading, setIsLoading] = useState(true);
 
+  // Authentification
+  const [currentUser, setCurrentUser] = useState('');
+  const [loginInput, setLoginInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
+  const [loginError, setLoginError] = useState('');
+
+  useEffect(() => {
+    const savedUser = localStorage.getItem('compta_user');
+    if (savedUser) setCurrentUser(savedUser);
+  }, []);
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    const u = loginInput.toLowerCase().trim();
+    const p = passwordInput.toLowerCase().trim();
+    
+    if ((u === 'david' && p === 'david') || (u === 'léo' && p === 'leo') || (u === 'leo' && p === 'leo')) {
+      const user = u === 'léo' ? 'leo' : u;
+      setCurrentUser(user);
+      localStorage.setItem('compta_user', user);
+      setLoginError('');
+    } else {
+      setLoginError('Identifiants incorrects');
+    }
+  };
+
+  const handleLogout = () => {
+    setCurrentUser('');
+    localStorage.removeItem('compta_user');
+  };
+
   const fetchData = async () => {
     setIsLoading(true);
     const isGlobal = activeTab === 'global';
@@ -35,7 +66,7 @@ export default function Dashboard() {
       const res = await fetch('/compta/api/tricount', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: expenseText })
+        body: JSON.stringify({ text: expenseText, currentUser })
       });
       const json = await res.json();
       if (res.ok) {
@@ -74,13 +105,37 @@ export default function Dashboard() {
     ];
   }
 
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <form onSubmit={handleLogin} className="bg-white p-6 rounded-xl shadow-md w-full max-w-sm space-y-4">
+          <h1 className="text-xl font-bold text-center text-gray-800">Connexion Compta</h1>
+          {loginError && <p className="text-red-500 text-sm text-center">{loginError}</p>}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Utilisateur</label>
+            <input type="text" value={loginInput} onChange={e => setLoginInput(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 outline-none focus:border-blue-500" placeholder="David ou Léo" required />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Mot de passe</label>
+            <input type="password" value={passwordInput} onChange={e => setPasswordInput(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 outline-none focus:border-blue-500" placeholder="••••" required />
+          </div>
+          <button type="submit" className="w-full bg-blue-600 text-white font-medium py-2 rounded hover:bg-blue-700">Se connecter</button>
+        </form>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col pb-20">
-      <header className="bg-white shadow-sm p-4 sticky top-0 z-10">
-        <h1 className="text-xl font-bold text-gray-800 text-center">
+      <header className="bg-white shadow-sm p-4 sticky top-0 z-10 flex justify-between items-center">
+        <h1 className="text-xl font-bold text-gray-800">
           {activeTab === 'dashboard' ? 'Budget du Mois' : 
            activeTab === 'tricount' ? 'Dépenses Communes' : 'Bilan Cumulé'}
         </h1>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-gray-500 capitalize">{currentUser}</span>
+          <button onClick={handleLogout} className="text-xs text-red-500 border border-red-500 rounded px-2 py-1">Déco</button>
+        </div>
       </header>
 
       <main className="flex-1 p-4 overflow-y-auto">

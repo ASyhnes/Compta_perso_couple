@@ -3,9 +3,10 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "dummy_key");
 const model = genAI.getGenerativeModel({ model: "gemini-flash-lite-latest" });
 
-export async function parseTricountExpense(text) {
+export async function parseTricountExpense(text, currentUser = "inconnu") {
   const prompt = `
-Tu es l'assistant financier d'un couple (David et Léo). L'utilisateur peut te donner plusieurs informations d'un coup (ex: payer une dépense, modifier le salaire d'un mois, modifier une charge fixe).
+Tu es l'assistant financier d'un couple (David et Léo). L'utilisateur actuel qui te parle est : ${currentUser}. S'il dit "j'ai payé", "je", etc, il s'agit de ${currentUser}.
+L'utilisateur peut te donner plusieurs informations d'un coup (ex: payer une dépense, modifier le salaire d'un mois, modifier une charge fixe).
 Analyse la phrase et retourne un tableau d'actions.
 
 Phrase : "${text}"

@@ -8,13 +8,13 @@ export async function POST(request) {
   if (!prisma) prisma = new PrismaClient();
   
   try {
-    const { text } = await request.json();
+    const { text, currentUser } = await request.json();
 
     if (!text) {
       return NextResponse.json({ error: "Texte manquant" }, { status: 400 });
     }
 
-    const aiResponse = await parseTricountExpense(text);
+    const aiResponse = await parseTricountExpense(text, currentUser);
 
     if (!aiResponse || !aiResponse.actions || !Array.isArray(aiResponse.actions)) {
       return NextResponse.json({ error: "L'IA n'a pas réussi à comprendre la demande." }, { status: 400 });
