@@ -27,7 +27,7 @@ export async function POST(request) {
       const target = fixedExpenses.find(e => e.name.toLowerCase().includes(aiResponse.targetName.toLowerCase()) || aiResponse.targetName.toLowerCase().includes(e.name.toLowerCase()));
       
       if (!target) {
-        return NextResponse.json({ error: \`Charge fixe "\${aiResponse.targetName}" introuvable.\` }, { status: 404 });
+        return NextResponse.json({ error: `Charge fixe "${aiResponse.targetName}" introuvable.` }, { status: 404 });
       }
 
       await prisma.fixedExpense.update({
@@ -35,7 +35,7 @@ export async function POST(request) {
         data: { amount: Number(aiResponse.newAmount) }
       });
 
-      return NextResponse.json({ success: true, message: \`La charge \${target.name} a été mise à jour à \${aiResponse.newAmount}€.\` });
+      return NextResponse.json({ success: true, message: `La charge ${target.name} a été mise à jour à ${aiResponse.newAmount}€.` });
     }
 
     if (aiResponse.action === 'EXPENSE') {
