@@ -15,7 +15,7 @@ export default function Dashboard() {
     setIsLoading(true);
     const isGlobal = activeTab === 'global';
     try {
-      const res = await fetch(`/api/dashboard?global=${isGlobal}`);
+      const res = await fetch(`/compta/api/dashboard?global=${isGlobal}`);
       const json = await res.json();
       if (json.calculation) setData(json);
     } catch (e) {
@@ -32,7 +32,7 @@ export default function Dashboard() {
     if (!expenseText) return;
     setIsSubmitting(true);
     try {
-      const res = await fetch('/api/tricount', {
+      const res = await fetch('/compta/api/tricount', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: expenseText })
