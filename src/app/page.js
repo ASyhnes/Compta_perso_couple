@@ -37,11 +37,13 @@ export default function Dashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: expenseText })
       });
+      const json = await res.json();
       if (res.ok) {
         setExpenseText('');
+        alert(json.message || "Dépense ajoutée !");
         fetchData(); // Rafraîchir les données
       } else {
-        alert("Erreur lors de l'analyse avec Gemini. Vérifiez votre clé API.");
+        alert(json.error || "Erreur lors de l'analyse avec Gemini.");
       }
     } catch (e) {
       console.error(e);
