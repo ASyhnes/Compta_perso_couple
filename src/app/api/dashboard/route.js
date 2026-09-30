@@ -14,7 +14,9 @@ export async function GET(request) {
     const fixedExpenses = await prisma.fixedExpense.findMany({ include: { payer: true } });
     
     let sharedExpenses;
-    let monthData = { salaryDavid: 1800, salaryLeo: 1426 };
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    let monthRecord = await prisma.monthRecord.findUnique({ where: { yearMonth: currentMonth } });
+    let monthData = monthRecord || { salaryDavid: 1800, salaryLeo: 1426 };
 
     if (isGlobal) {
       sharedExpenses = await prisma.sharedExpense.findMany({ include: { payer: true }, orderBy: { date: 'desc' } });
