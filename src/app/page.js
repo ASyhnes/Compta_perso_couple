@@ -277,7 +277,7 @@ export default function Dashboard() {
                             </h4>
                             <div className="space-y-2 px-1">
                               {groupedResponsibility[person].banks[bankName].items.map((exp, i) => (
-                                <div key={i} className={`flex justify-between items-center text-sm border-b border-gray-100 pb-1 last:border-0 last:pb-0 transition-colors ${checkedItems[\`\${person}-\${bankName}-\${exp.name}\`] ? 'bg-green-50 p-1 rounded-md' : ''}`}>
+                                <div key={i} className={`flex justify-between items-center text-sm border-b border-gray-100 pb-1 last:border-0 last:pb-0 transition-colors ${checkedItems[`${person}-${bankName}-${exp.name}`] ? 'bg-green-50 p-1 rounded-md' : ''}`}>
                                   <label className="flex items-center gap-2 cursor-pointer flex-1">
                                     <input 
                                       type="checkbox" 
