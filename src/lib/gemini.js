@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "dummy_key");
-const model = genAI.getGenerativeModel({ model: "gemini-3.8-flash" });
+const model = genAI.getGenerativeModel({ model: "gemini-flash-lite-latest" });
 
 export async function parseTricountExpense(text) {
   const prompt = `
@@ -37,13 +37,19 @@ Actions possibles :
 3. "UPDATE_SALARY" : Modification du salaire perçu par l'un d'eux ce mois-ci. Fournir "target" ("david" ou "leo") et "amount".
 `;
 
-  try {
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text().trim();
-    const cleanJson = responseText.replace(/```json/gi, '').replace(/```/gi, '').trim();
-    return JSON.parse(cleanJson);
-  } catch (error) {
-    console.error("Erreur Gemini Parse:", error);
-    return null;
+  let retries = 3;
+  while (retries > 0) {
+    try {
+      const result = await model.generateContent(prompt);
+      const responseText = result.response.text().trim();
+      const cleanJson = responseText.replace(/```json/gi, '').replace(/```/gi, '').trim();
+      return JSON.parse(cleanJson);
+    } catch (error) {
+      console.error(`Erreur Gemini Parse (Reste ${retries-1} essais):`, error.message);
+      retries -= 1;
+      if (retries === 0) return null;
+      // Attendre 1 seconde avant de réessayer
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
   }
 }
