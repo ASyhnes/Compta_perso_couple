@@ -125,6 +125,14 @@ export default function Dashboard() {
     );
   }
 
+  const groupedFixedExpenses = data.fixedExpenses ? data.fixedExpenses.reduce((acc, exp) => {
+    const payer = exp.payer?.username || 'inconnu';
+    if (!acc[payer]) acc[payer] = { total: 0, items: [] };
+    acc[payer].items.push(exp);
+    acc[payer].total += exp.amount;
+    return acc;
+  }, {}) : {};
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col pb-20">
       <header className="bg-white shadow-sm p-4 sticky top-0 z-10 flex justify-between items-center">
@@ -200,12 +208,22 @@ export default function Dashboard() {
 
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
                   <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Charges Fixes</h2>
-                  {data.fixedExpenses?.length > 0 ? (
-                    <div className="space-y-3">
-                      {data.fixedExpenses.map(exp => (
-                        <div key={exp.id} className="flex justify-between items-center text-sm border-b border-gray-50 pb-2 last:border-0 last:pb-0">
-                          <span className="text-gray-600">{exp.name}</span>
-                          <span className="font-medium text-gray-800">{exp.amount} €</span>
+                  {Object.keys(groupedFixedExpenses).length > 0 ? (
+                    <div className="space-y-4">
+                      {Object.keys(groupedFixedExpenses).map(payer => (
+                        <div key={payer}>
+                          <div className="flex justify-between items-center bg-gray-50 p-2 rounded text-sm font-semibold text-gray-700 mb-2">
+                            <span className="capitalize">{payer === 'commun' ? 'Compte Couple' : `Perso ${payer}`}</span>
+                            <span className="text-blue-600">{groupedFixedExpenses[payer].total} €</span>
+                          </div>
+                          <div className="space-y-2 px-2">
+                            {groupedFixedExpenses[payer].items.map(exp => (
+                              <div key={exp.id} className="flex justify-between items-center text-sm border-b border-gray-100 pb-1 last:border-0 last:pb-0">
+                                <span className="text-gray-600">{exp.name}</span>
+                                <span className="font-medium text-gray-800">{exp.amount} €</span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       ))}
                     </div>
