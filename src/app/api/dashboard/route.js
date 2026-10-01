@@ -21,7 +21,22 @@ export async function GET(request) {
       include: { chatMessages: { orderBy: { date: 'asc' } } }
     });
     
-    let monthData = monthRecord || { salaryDavid: 1800, salaryLeo: 1426, chatMessages: [], cancelledFixedExpenses: "[]" };
+    let monthData = monthRecord || { salaryDavid: 1800, salaryLeo: 1426, chatMessages: [], cancelledFixedExpenses: "[]", modifiedFixedExpenses: "{}" };
+
+    let modifiedFixed = {};
+    try {
+      if (monthData.modifiedFixedExpenses) {
+        modifiedFixed = JSON.parse(monthData.modifiedFixedExpenses);
+      }
+    } catch(e) {}
+
+    // Apply temporary modifications for this month
+    fixedExpenses.forEach(exp => {
+      if (modifiedFixed[exp.name] !== undefined) {
+        exp.amount = modifiedFixed[exp.name];
+        exp.isModifiedThisMonth = true;
+      }
+    });
 
     const calculation = calculateMonth(monthData, fixedExpenses, sharedExpenses);
 
