@@ -167,11 +167,39 @@ export default function Dashboard() {
 
       const bank = exp.bankAccount || 'Compte Principal';
       const type = exp.distributionRule === 'PERSONAL' ? 'perso' : 'commun';
+      const isCancelled = cancelledFixed.includes(exp.name);
 
-      // Assign David's responsibility
-      if (partDavid > 0) {
-        if (!groupedResponsibility.david.banks[bank]) groupedResponsibility.david.banks[bank] = { total: 0, commun: [], perso: [] };
-        groupedResponsibility.david.banks[bank][type].push({ name: exp.distributionRule !== 'PERSONAL' ? "Part de " + exp.name : exp.name, amount: partDavid, isPaid: false });
+      const addResponsibility = (person, targetBank, targetType, name, amount) => {
+        if (Math.abs(amount) < 0.01) return;
+        if (!groupedResponsibility[person].banks[targetBank]) {
+          groupedResponsibility[person].banks[targetBank] = { total: 0, commun: [], perso: [] };
+        }
+        groupedResponsibility[person].banks[targetBank][targetType].push({
+          name, amount, isPaid: false, isCancelled, originalName: exp.name
+        });
+        if (!isCancelled) {
+          groupedResponsibility[person].banks[targetBank].total += amount;
+          groupedResponsibility[person].total += amount;
+        }
+      };
+
+      if (exp.payer?.username === 'commun') {
+        addResponsibility('david', bank, type, "Part de " + exp.name, partDavid);
+        addResponsibility('leo', bank, type, "Part de " + exp.name, partLeo);
+      } else if (exp.payer?.username === 'david') {
+        addResponsibility('david', bank, type, exp.name, exp.amount);
+        if (type === 'commun') {
+          addResponsibility('leo', 'Compte Commun', 'commun', `Part de ${exp.name} (avancé par David)`, partLeo);
+          addResponsibility('david', 'Compte Commun', 'commun', `Remboursement Léo (${exp.name})`, -partLeo);
+        }
+      } else if (exp.payer?.username === 'leo') {
+        addResponsibility('leo', bank, type, exp.name, exp.amount);
+        if (type === 'commun') {
+          addResponsibility('david', 'Compte Commun', 'commun', `Part de ${exp.name} (avancé par Léo)`, partDavid);
+          addResponsibility('leo', 'Compte Commun', 'commun', `Remboursement David (${exp.name})`, -partDavid);
+        }
+      }
+    });
         groupedResponsibility.david.banks[bank].total += partDavid;
         groupedResponsibility.david.total += partDavid;
       }
