@@ -146,6 +146,9 @@ export default function Dashboard() {
     leo: { total: 0, banks: {} }
   };
 
+    let davidCommunAdjustment = 0;
+  let leoCommunAdjustment = 0;
+
   if (data.fixedExpenses) {
     data.fixedExpenses.forEach(exp => {
       let partDavid = 0;
@@ -191,19 +194,72 @@ export default function Dashboard() {
         addResponsibility('leo', bank, type, "Part de " + exp.name, partLeo);
       } else if (exp.payer?.username === 'david') {
         addResponsibility('david', bank, type, exp.name, exp.amount);
-        if (type === 'commun') {
-          addResponsibility('leo', 'Compte Commun', 'commun', `Part de ${exp.name} (avancé par David)`, partLeo);
-          addResponsibility('david', 'Compte Commun', 'commun', `Remboursement Léo (${exp.name})`, -partLeo);
+        if (type === 'commun' && !isCancelled) {
+          davidCommunAdjustment -= partLeo;
+          leoCommunAdjustment += partLeo;
         }
       } else if (exp.payer?.username === 'leo') {
         addResponsibility('leo', bank, type, exp.name, exp.amount);
-        if (type === 'commun') {
-          addResponsibility('david', 'Compte Commun', 'commun', `Part de ${exp.name} (avancé par Léo)`, partDavid);
-          addResponsibility('leo', 'Compte Commun', 'commun', `Remboursement David (${exp.name})`, -partDavid);
+        if (type === 'commun' && !isCancelled) {
+          davidCommunAdjustment += partDavid;
+          leoCommunAdjustment -= partDavid;
         }
       }
     });
   }
+
+  if (data.sharedExpenses) {
+    data.sharedExpenses.forEach(exp => {
+      let partDavid = 0;
+      let partLeo = 0;
+      if (exp.category === 'Nourriture/Hygiène/Maison') {
+        partDavid = exp.amount * (2/3);
+        partLeo = exp.amount * (1/3);
+      } else {
+        partDavid = exp.amount * prorataDavid;
+        partLeo = exp.amount * prorataLeo;
+      }
+
+      if (exp.payer?.username === 'david') {
+        davidCommunAdjustment -= partLeo;
+        leoCommunAdjustment += partLeo;
+      } else if (exp.payer?.username === 'leo') {
+        davidCommunAdjustment += partDavid;
+        leoCommunAdjustment -= partDavid;
+      }
+    });
+  }
+
+  const applyAdjustment = (person, adjustment) => {
+    if (Math.abs(adjustment) < 0.01) return;
+    let communBank = groupedResponsibility[person].banks['Compte Commun'];
+    if (communBank && communBank.commun.length > 0) {
+      let adj = adjustment;
+      const order = ['nourriture', 'loyer'];
+      for (const key of order) {
+        let target = communBank.commun.find(i => i.name.toLowerCase().includes(key));
+        if (target) {
+          if (target.amount + adj < 0) {
+            adj += target.amount;
+            target.amount = 0;
+          } else {
+            target.amount += adj;
+            adj = 0;
+            break;
+          }
+        }
+      }
+      if (Math.abs(adj) > 0.01) {
+         communBank.commun[0].amount += adj;
+      }
+      communBank.total += adjustment;
+      groupedResponsibility[person].total += adjustment;
+    }
+  };
+
+  applyAdjustment('david', davidCommunAdjustment);
+  applyAdjustment('leo', leoCommunAdjustment);
+
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col pb-20">
