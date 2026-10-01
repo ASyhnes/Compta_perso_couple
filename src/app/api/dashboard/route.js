@@ -13,16 +13,15 @@ export async function GET(request) {
 
     const fixedExpenses = await prisma.fixedExpense.findMany({ include: { payer: true } });
     
-    let sharedExpenses;
+    let sharedExpenses = await prisma.sharedExpense.findMany({ include: { payer: true }, orderBy: { date: 'desc' } });
+    
     const currentMonth = new Date().toISOString().slice(0, 7);
-    let monthRecord = await prisma.monthRecord.findUnique({ where: { yearMonth: currentMonth } });
-    let monthData = monthRecord || { salaryDavid: 1800, salaryLeo: 1426 };
-
-    if (isGlobal) {
-      sharedExpenses = await prisma.sharedExpense.findMany({ include: { payer: true }, orderBy: { date: 'desc' } });
-    } else {
-      sharedExpenses = await prisma.sharedExpense.findMany({ include: { payer: true }, orderBy: { date: 'desc' } });
-    }
+    let monthRecord = await prisma.monthRecord.findUnique({ 
+      where: { yearMonth: currentMonth },
+      include: { chatMessages: { orderBy: { date: 'asc' } } }
+    });
+    
+    let monthData = monthRecord || { salaryDavid: 1800, salaryLeo: 1426, chatMessages: [], cancelledFixedExpenses: "[]" };
 
     const calculation = calculateMonth(monthData, fixedExpenses, sharedExpenses);
 

@@ -17,12 +17,14 @@ model User {
 }
 
 model MonthRecord {
-  id             String          @id @default(uuid())
-  yearMonth      String          @unique // format "YYYY-MM"
-  salaryDavid    Float
-  salaryLeo      Float
-  sharedExpenses SharedExpense[]
-  createdAt      DateTime        @default(now())
+  id                     String          @id @default(uuid())
+  yearMonth              String          @unique // format "YYYY-MM"
+  salaryDavid            Float
+  salaryLeo              Float
+  cancelledFixedExpenses String          @default("[]") // JSON array of cancelled FixedExpense names
+  sharedExpenses         SharedExpense[]
+  chatMessages           ChatMessage[]
+  createdAt              DateTime        @default(now())
 }
 
 model FixedExpense {
@@ -45,4 +47,13 @@ model SharedExpense {
   payer       User         @relation(fields: [payerId], references: [id])
   monthId     String?
   month       MonthRecord? @relation(fields: [monthId], references: [id])
+}
+
+model ChatMessage {
+  id        String       @id @default(uuid())
+  text      String
+  sender    String       // "david", "leo", or "ai"
+  date      DateTime     @default(now())
+  monthId   String
+  month     MonthRecord  @relation(fields: [monthId], references: [id])
 }

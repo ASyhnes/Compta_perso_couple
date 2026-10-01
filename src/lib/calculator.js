@@ -6,6 +6,13 @@ export function calculateMonth(monthData, fixedExpenses, sharedExpenses) {
   const salaryLeo = monthData.salaryLeo || 1426;
   const totalSalary = salaryDavid + salaryLeo;
 
+  let cancelledFixed = [];
+  try {
+    if (monthData.cancelledFixedExpenses) {
+      cancelledFixed = JSON.parse(monthData.cancelledFixedExpenses);
+    }
+  } catch(e) {}
+
   const prorataDavid = totalSalary > 0 ? salaryDavid / totalSalary : 0.5;
   const prorataLeo = totalSalary > 0 ? salaryLeo / totalSalary : 0.5;
 
@@ -14,6 +21,8 @@ export function calculateMonth(monthData, fixedExpenses, sharedExpenses) {
   
   // 1. Calcul des charges fixes (ex: Loyer, Box, etc.)
   fixedExpenses.forEach(exp => {
+    if (cancelledFixed.includes(exp.name)) return; // Ignorer les charges annulées pour ce mois
+
     let partDavid = 0;
     let partLeo = 0;
 
@@ -71,9 +80,6 @@ export function calculateMonth(monthData, fixedExpenses, sharedExpenses) {
       davidOwesToCommun += partDavid;
     }
   });
-
-  // Sécuriser les montants (pas de virement négatif, compensation directe)
-  // En général, davidOwesToCommun et leoOwesToCommun sont positifs et représentent le virement final vers le compte commun.
   
   return {
     prorataDavid: prorataDavid * 100,

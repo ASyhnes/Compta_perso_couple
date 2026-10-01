@@ -282,7 +282,7 @@ export default function Dashboard() {
                                     <div className="text-[10px] uppercase font-bold text-gray-400 mb-1 ml-1">Charges Communes</div>
                                     <div className="space-y-1">
                                       {groupedResponsibility[person].banks[bankName].commun.map((exp, i) => (
-                                        <div key={`com-${i}`} className={`flex justify-between items-center text-sm border-b border-gray-100 pb-1 last:border-0 last:pb-0 transition-colors ${checkedItems[`${person}-${bankName}-${exp.name}`] ? 'bg-green-50 p-1 rounded-md' : ''}`}>
+                                        <div key={`com-${i}`} className={`flex justify-between items-center text-sm border-b border-gray-100 pb-1 last:border-0 last:pb-0 transition-colors ${exp.isCancelled ? 'bg-red-50 p-1 rounded-md line-through text-red-500' : (checkedItems[`${person}-${bankName}-${exp.name}`] ? 'bg-green-50 p-1 rounded-md' : '')}`}>
                                           <label className="flex items-center gap-2 cursor-pointer flex-1">
                                             <input type="checkbox" className="rounded text-green-600 focus:ring-green-500" checked={checkedItems[`${person}-${bankName}-${exp.name}`] || false} onChange={(e) => { const newChecked = { ...checkedItems, [`${person}-${bankName}-${exp.name}`]: e.target.checked }; setCheckedItems(newChecked); localStorage.setItem('compta_checked_items_' + new Date().toISOString().slice(0, 7), JSON.stringify(newChecked)); }} />
                                             <span className={checkedItems[`${person}-${bankName}-${exp.name}`] ? "text-green-700 font-medium" : "text-gray-600"}>{exp.name}</span>
@@ -298,7 +298,7 @@ export default function Dashboard() {
                                     <div className="text-[10px] uppercase font-bold text-gray-400 mb-1 ml-1 mt-2">Charges Personnelles</div>
                                     <div className="space-y-1">
                                       {groupedResponsibility[person].banks[bankName].perso.map((exp, i) => (
-                                        <div key={`per-${i}`} className={`flex justify-between items-center text-sm border-b border-gray-100 pb-1 last:border-0 last:pb-0 transition-colors ${checkedItems[`${person}-${bankName}-${exp.name}`] ? 'bg-green-50 p-1 rounded-md' : ''}`}>
+                                        <div key={`per-${i}`} className={`flex justify-between items-center text-sm border-b border-gray-100 pb-1 last:border-0 last:pb-0 transition-colors ${exp.isCancelled ? 'bg-red-50 p-1 rounded-md line-through text-red-500' : (checkedItems[`${person}-${bankName}-${exp.name}`] ? 'bg-green-50 p-1 rounded-md' : '')}`}>
                                           <label className="flex items-center gap-2 cursor-pointer flex-1">
                                             <input type="checkbox" className="rounded text-green-600 focus:ring-green-500" checked={checkedItems[`${person}-${bankName}-${exp.name}`] || false} onChange={(e) => { const newChecked = { ...checkedItems, [`${person}-${bankName}-${exp.name}`]: e.target.checked }; setCheckedItems(newChecked); localStorage.setItem('compta_checked_items_' + new Date().toISOString().slice(0, 7), JSON.stringify(newChecked)); }} />
                                             <span className={checkedItems[`${person}-${bankName}-${exp.name}`] ? "text-green-700 font-medium" : "text-gray-600"}>{exp.name}</span>
