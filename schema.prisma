@@ -1,0 +1,60 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String          @id @default(uuid())
+  username       String          @unique // "david" ou "leo"
+  password       String          
+  defaultSalary  Float
+  fixedExpenses  FixedExpense[]
+  sharedExpenses SharedExpense[]
+}
+
+model MonthRecord {
+  id                     String          @id @default(uuid())
+  yearMonth              String          @unique // format "YYYY-MM"
+  salaryDavid            Float
+  salaryLeo              Float
+  cancelledFixedExpenses String          @default("[]") // JSON array
+  modifiedFixedExpenses  String          @default("{}") // JSON object map for amount overrides this month
+  sharedExpenses         SharedExpense[]
+  chatMessages           ChatMessage[]
+  createdAt              DateTime        @default(now())
+}
+
+model FixedExpense {
+  id               String   @id @default(uuid())
+  name             String
+  amount           Float
+  payerId          String
+  payer            User     @relation(fields: [payerId], references: [id])
+  distributionRule String   // "PRO_RATA", "TWO_THIRDS", "FIFTY_FIFTY", "PERSONAL"
+  bankAccount      String?  // e.g., "Revolut", "Boursorama", "Trade Republic"
+}
+
+model SharedExpense {
+  id          String       @id @default(uuid())
+  description String
+  amount      Float
+  category    String       // "Nourriture/Hygiène/Maison", "Transport", "Bricolage", "Animaux", "Plaisir", "Sortie"
+  date        DateTime     @default(now())
+  payerId     String
+  payer       User         @relation(fields: [payerId], references: [id])
+  monthId     String?
+  month       MonthRecord? @relation(fields: [monthId], references: [id])
+}
+
+model ChatMessage {
+  id        String       @id @default(uuid())
+  text      String
+  sender    String       // "david", "leo", or "ai"
+  date      DateTime     @default(now())
+  monthId   String
+  month     MonthRecord  @relation(fields: [monthId], references: [id])
+}
