@@ -167,7 +167,10 @@ export default function Dashboard() {
 
       const bank = exp.bankAccount || 'Compte Principal';
       const type = exp.distributionRule === 'PERSONAL' ? 'perso' : 'commun';
-      const isCancelled = cancelledFixed.includes(exp.name);
+      let isCancelled = false;
+      if (typeof cancelledFixed !== 'undefined' && cancelledFixed.includes(exp.name)) {
+        isCancelled = true;
+      }
 
       const addResponsibility = (person, targetBank, targetType, name, amount) => {
         if (Math.abs(amount) < 0.01) return;
@@ -198,18 +201,6 @@ export default function Dashboard() {
           addResponsibility('david', 'Compte Commun', 'commun', `Part de ${exp.name} (avancé par Léo)`, partDavid);
           addResponsibility('leo', 'Compte Commun', 'commun', `Remboursement David (${exp.name})`, -partDavid);
         }
-      }
-    });
-        groupedResponsibility.david.banks[bank].total += partDavid;
-        groupedResponsibility.david.total += partDavid;
-      }
-
-      // Assign Leo's responsibility
-      if (partLeo > 0) {
-        if (!groupedResponsibility.leo.banks[bank]) groupedResponsibility.leo.banks[bank] = { total: 0, commun: [], perso: [] };
-        groupedResponsibility.leo.banks[bank][type].push({ name: exp.distributionRule !== 'PERSONAL' ? "Part de " + exp.name : exp.name, amount: partLeo, isPaid: false });
-        groupedResponsibility.leo.banks[bank].total += partLeo;
-        groupedResponsibility.leo.total += partLeo;
       }
     });
   }
